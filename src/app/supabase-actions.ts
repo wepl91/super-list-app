@@ -1,0 +1,266 @@
+"use server";
+
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import webpush from "web-push";
+import { headers } from "next/headers";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { StoredSubscription } from "@/app/actions";
+
+/** Origen (scheme://host) de la request actual, para el redirect de invitación. */
+async function getRequestOrigin(): Promise<string | null> {
+  try {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    if (!host) return null;
+    const proto = h.get("x-forwarded-proto") ?? "http";
+    return `${proto}://${host}`;
+  } catch {
+    return null;
+  }
+}
+
+webpush.setVapidDetails(
+  process.env.VAPID_EMAIL!,
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+  process.env.VAPID_PRIVATE_KEY!
+);
+
+/**
+ * Cliente con rol service (solo servidor): permite resolver el email del otro
+ * usuario en auth.users y crear la membresía. Nunca viaja al cliente.
+ *
+ * NOTA: el service role bypassea RLS, por eso SIEMPRE verificamos antes que el
+ * llamador es el owner de la lista usando la sesión real del usuario (RNF-3).
+ */
+let serviceClient: SupabaseClient | null = null;
+
+function getServiceClient() {
+  if (!serviceClient) {
+    serviceClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+  }
+  return serviceClient;
+}
+
+export type AddMemberResult =
+  | { ok: true; message: string }
+  | { ok: false; error: string };
+
+/** Nombre visible del usuario (full_name de Google, sino email/parte local). */
+function displayName(user: {
+  email?: string;
+  user_metadata?: { full_name?: unknown; name?: unknown };
+}): string {
+  const meta = user.user_metadata ?? {};
+  const full = meta.full_name;
+  const name = meta.name;
+  if (typeof full === "string" && full.trim()) return full.trim();
+  if (typeof name === "string" && name.trim()) return name.trim();
+  if (user.email) return user.email.split("@")[0];
+  return "Alguien";
+}
+
+/** Envía un push a todas las suscripciones del usuario dado (best-effort). */
+async function notifyUserListShared(
+  userId: string,
+  message: string
+): Promise<void> {
+  const svc = getServiceClient();
+  const { data: subs } = await svc
+    .from("push_subscriptions")
+    .select("endpoint, keys")
+    .eq("user_id", userId);
+  if (!subs || subs.length === 0) return;
+
+  for (const sub of subs as unknown as StoredSubscription[]) {
+    try {
+      await webpush.sendNotification(
+        sub,
+        JSON.stringify({
+          title: "Super List",
+          body: message,
+          icon: "/icon-192x192.png",
+        })
+      );
+    } catch (err) {
+      console.error("Error enviando push al compartir:", err);
+    }
+  }
+}
+
+/**
+ * Solo el owner de una lista puede agregar miembro (por email).
+ * Verifica: (1) sesión válida, (2) el usuario actual es owner de la lista,
+ * (3) el email ingresado corresponde a un usuario registrado.
+ * Si el email no está registrado devuelve "usuario no encontrado" y no crea nada.
+ */
+export async function addMemberByEmail(
+  listId: string,
+  email: string
+): Promise<AddMemberResult> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalized)) {
+    return { ok: false, error: "Ingresá un email válido." };
+  }
+
+  // Verificar sesión del llamador
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Necesitás iniciar sesión para compartir." };
+  }
+
+  // Verificar que el llamador es owner de la lista
+  const { data: listRow } = await supabase
+    .from("lists")
+    .select("owner_id, name")
+    .eq("id", listId)
+    .single();
+  if (!listRow || listRow.owner_id !== user.id) {
+    return { ok: false, error: "Solo el dueño de la lista puede compartirla." };
+  }
+
+  // Determinar si el usuario ya está registrado en el proyecto. Si ya existe,
+  // lo agregamos de una como miembro; si no, enviamos una invitación por email
+  // (crea la cuenta cuando el invitado la complete, pudiendo entrar con Google).
+  const svc = getServiceClient();
+  const { data: existingUser } = await svc
+    .from("auth.users")
+    .select("id")
+    .ilike("email", normalized)
+    .maybeSingle();
+
+  let userId: string;
+  let invited = false;
+
+  if (existingUser?.id) {
+    userId = existingUser.id;
+  } else {
+    const origin =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (await getRequestOrigin()) ??
+      "http://localhost:3000";
+
+    const { data: invitedData, error: inviteError } = await svc.auth.admin
+      .inviteUserByEmail(normalized, {
+        redirectTo: `${origin}/`,
+      });
+
+    if (inviteError || !invitedData?.user) {
+      console.error("Error enviando invitación:", inviteError);
+      return {
+        ok: false,
+        error: "No se pudo enviar la invitación. Intentalo de nuevo.",
+      };
+    }
+    userId = invitedData.user.id;
+    invited = true;
+  }
+
+  // Crear la membresía como 'editor' (ya verificamos que somos owner)
+  const { error: insertError } = await svc
+    .from("list_members")
+    .upsert(
+      { list_id: listId, user_id: userId, role: "editor" },
+      { onConflict: "list_id,user_id" }
+    );
+
+  if (insertError) {
+    console.error("Error creando membresía:", insertError);
+    return { ok: false, error: "No se pudo agregar al usuario a la lista." };
+  }
+
+  // Guardar/actualizar el perfil del miembro para poder resolver su email
+  const { error: profileError } = await svc.from("profiles").upsert(
+    { user_id: userId, email: normalized },
+    { onConflict: "user_id" }
+  );
+  if (profileError) console.error("Error guardando perfil del miembro:", profileError);
+
+  // Notificar por push al nuevo miembro (solo tiene sentido si ya tenía cuenta)
+  if (!invited) {
+    const senderName = displayName(user);
+    const listName = listRow.name ?? "lista";
+    const message = `${senderName} te ha compartido la lista ${listName}`;
+    await notifyUserListShared(userId, message);
+  }
+
+  return {
+    ok: true,
+    message: invited
+      ? "Invitación enviada. Colaborará cuando complete su cuenta."
+      : "Usuario agregado a la lista.",
+  };
+}
+
+export type SharedMemberEmails = {
+  listId: string;
+  userId: string;
+  email: string;
+}[];
+
+/**
+ * Devuelve los emails de los miembros (editor) de las listas de las que el
+ * usuario actual es owner. Se resuelve con service role (bypass RLS) y se
+ * verifica que el llamador es efectivamente el owner de cada lista, para
+ * no exponer emails de listas ajenas.
+ */
+export async function getSharedMemberEmails(): Promise<SharedMemberEmails> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: myLists } = await supabase
+    .from("lists")
+    .select("id, owner_id")
+    .eq("owner_id", user.id);
+
+  const ownedIds = (myLists ?? []).map((l) => l.id);
+  if (ownedIds.length === 0) return [];
+
+  const svc = getServiceClient();
+  const { data: members } = await svc
+    .from("list_members")
+    .select("list_id, user_id, role")
+    .in("list_id", ownedIds);
+
+  const editors = (members ?? []).filter(
+    (m) => m.role === "editor"
+  );
+  if (editors.length === 0) return [];
+
+  const targetIds = editors.map((m) => m.user_id);
+  const { data: profiles } = await svc
+    .from("profiles")
+    .select("user_id, email")
+    .in("user_id", targetIds);
+  const emailById = new Map(
+    (profiles ?? []).map((p) => [p.user_id, p.email as string])
+  );
+
+  // fallback: si algún miembro no tiene perfil, resolver de auth.users
+  const missing = editors.filter((m) => !emailById.has(m.user_id));
+  if (missing.length > 0) {
+    const { data: authRows } = await svc
+      .from("auth.users")
+      .select("id, email")
+      .in("id", missing.map((m) => m.user_id));
+    for (const r of authRows ?? []) {
+      if (r.email) emailById.set(r.id, r.email);
+    }
+  }
+
+  const result: SharedMemberEmails = [];
+  for (const m of editors) {
+    const email = emailById.get(m.user_id);
+    if (email) result.push({ listId: m.list_id, userId: m.user_id, email });
+  }
+  return result;
+}
