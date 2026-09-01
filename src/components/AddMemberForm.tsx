@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { addMemberByEmail, getSharedMemberEmails } from "@/app/supabase-actions";
 import { useListStore } from "@/lib/stores/listStore";
+import { useAuth } from "@/lib/supabase/auth";
+import AuthGateCta from "@/components/AuthGateCta";
 
 export default function AddMemberForm({
   listId,
@@ -12,12 +14,22 @@ export default function AddMemberForm({
   onClose?: () => void;
 }) {
   const setListSharedMembers = useListStore((s) => s.setListSharedMembers);
+  const { status } = useAuth();
+  const isSignedIn = status === "signedIn";
   const [email, setEmail] = useState("");
   const [result, setResult] = useState<{
     ok: boolean;
     text: string;
   } | null>(null);
   const [busy, setBusy] = useState(false);
+
+  if (!isSignedIn) {
+    return (
+      <div className="rounded-2xl border border-zinc-200 bg-surface p-4 dark:border-zinc-700">
+        <AuthGateCta compact />
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

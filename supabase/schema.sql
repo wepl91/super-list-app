@@ -75,10 +75,20 @@ create table if not exists public.push_subscriptions (
   created_at timestamptz not null default now()
 );
 
+-- Allowlist de emails con permiso de registrarse (registro cerrado, uso
+-- personal / friends & family). La gestiona solo el service role (server
+-- actions); sin políticas para los roles cliente.
+create table if not exists public.allowed_emails (
+  email      text primary key,
+  added_at   timestamptz not null default now(),
+  added_by   uuid references auth.users(id) on delete set null
+);
+
 -- Índices.
 create index if not exists lists_owner_position_idx on public.lists (owner_id, position);
 create index if not exists list_members_user_idx on public.list_members (user_id);
 create index if not exists list_items_list_position_idx on public.list_items (list_id, position);
+create index if not exists allowed_emails_added_by_idx on public.allowed_emails (added_by);
 
 -- ---------- ROW LEVEL SECURITY ----------
 
@@ -87,6 +97,7 @@ alter table public.list_members enable row level security;
 alter table public.list_items enable row level security;
 alter table public.push_subscriptions enable row level security;
 alter table public.profiles enable row level security;
+alter table public.allowed_emails enable row level security;
 
 -- profiles: cada usuario puede ver/actualizar/insertar su propio perfil.
 -- (Los emails de los miembros se resuelven por server action con service role.)
@@ -177,3 +188,37 @@ create policy "push_subscriptions_delete_own" on public.push_subscriptions
 
 -- Realtime: publicar solo cambios de list_items (D5).
 alter publication supabase_realtime add table public.list_items;
+
+-- ---------- TRIGGER: registro cerrado (allowlist) ----------
+
+-- Rechaza el alta de un usuario nuevo si su email NO está en allowed_emails.
+-- SECURITY DEFINER + search_path='' porque Auth corre como supabase_auth_admin
+-- (no tendría permisos sobre public). Se dispara para TODO insert, incluido el
+-- del service role (inviteUserByEmail): por eso los flujos de invitación deben
+-- insertar el email en allowed_emails ANTES de llamar a inviteUserByEmail.
+create or replace function public.gate_user_signup()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.email is null
+     or not exists (
+       select 1 from public.allowed_emails
+       where lower(email) = lower(new.email)
+     ) then
+    raise exception 'Este email no está autorizado. Solo se permite el acceso a invitados de amigos y familia.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists allowlist_gate_user on auth.users;
+create trigger allowlist_gate_user
+  before insert on auth.users
+  for each row execute function public.gate_user_signup();
+
+-- Nota: la siembra inicial del admin (email del dueño) se hace en la migración
+-- `20260901113023_allowlist_registros.sql` (con placeholder) o por SQL Editor
+-- antes del primer signup, para que el dueño no quede lockeado.

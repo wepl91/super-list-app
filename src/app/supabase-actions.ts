@@ -49,6 +49,92 @@ export type AddMemberResult =
   | { ok: true; message: string }
   | { ok: false; error: string };
 
+export type InviteResult =
+  | { ok: true; message: string }
+  | { ok: false; error: string };
+
+/**
+ * Agrega (o confirma) que el email está en la allowlist de la app.
+ * Se llama SIEMPRE ANTES de cualquier inviteUserByEmail / creación de usuario:
+ * el trigger que gatea el registro rechaza el alta si el email no está en
+ * allowed_emails, incluso para el service role. Orden crítico (D1/D3).
+ */
+async function ensureAllowedEmail(
+  svc: SupabaseClient,
+  email: string,
+  addedBy: string
+): Promise<Error | null> {
+  const { error } = await svc.from("allowed_emails").upsert(
+    { email: email.toLowerCase(), added_by: addedBy },
+    { onConflict: "email" }
+  );
+  if (error) {
+    console.error("Error agregando email a allowlist:", error);
+    return error;
+  }
+  return null;
+}
+
+/**
+ * Solo el admin (email = ADMIN_EMAIL) puede invitar a usar la app a un email.
+ * Verifica sesión + rol admin (server env), agrega el email a la allowlist y
+ * luego envía la invitación por email (inviteUserByEmail).
+ * ORDEN: allowlist ANTES de invite, para que el trigger del registro pase.
+ */
+export async function inviteToApp(email: string): Promise<InviteResult> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalized)) {
+    return { ok: false, error: "Ingresá un email válido." };
+  }
+
+  // Verificar sesión del llamador
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Necesitás iniciar sesión para invitar." };
+  }
+
+  // Verificar que el llamador es admin (fuente de verdad: ADMIN_EMAIL server env)
+  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+  if (!adminEmail || user.email?.toLowerCase() !== adminEmail) {
+    return { ok: false, error: "No tenés permisos para invitar." };
+  }
+
+  const svc = getServiceClient();
+
+  // 1) Allowlist ANTES de invitar (el trigger lo exige, incluso con service role)
+  const allowedError = await ensureAllowedEmail(svc, normalized, user.id);
+  if (allowedError) {
+    return {
+      ok: false,
+      error: "No se pudo autorizar el acceso. Intentalo de nuevo.",
+    };
+  }
+
+  // 2) Invitar (si el usuario ya existe, Supabase devuelve el mismo usuario)
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (await getRequestOrigin()) ??
+    "http://localhost:3000";
+
+  const { error: inviteError } = await svc.auth.admin.inviteUserByEmail(
+    normalized,
+    { redirectTo: `${origin}/` }
+  );
+
+  if (inviteError) {
+    console.error("Error enviando invitación:", inviteError);
+    return {
+      ok: false,
+      error: "No se pudo enviar la invitación. Intentalo de nuevo.",
+    };
+  }
+
+  return { ok: true, message: `Invitación enviada a ${normalized}.` };
+}
+
 /** Nombre visible del usuario (full_name de Google, sino email/parte local). */
 function displayName(user: {
   email?: string;
@@ -145,6 +231,17 @@ export async function addMemberByEmail(
       process.env.NEXT_PUBLIC_APP_URL ??
       (await getRequestOrigin()) ??
       "http://localhost:3000";
+
+    // Compartir lista = dar acceso a la app: autorizamos el email en la
+    // allowlist ANTES de invitar (el trigger del registro lo exige, incluso
+    // para el service role que crea el usuario vía inviteUserByEmail).
+    const allowedError = await ensureAllowedEmail(svc, normalized, user.id);
+    if (allowedError) {
+      return {
+        ok: false,
+        error: "No se pudo autorizar el acceso del invitado. Intentalo de nuevo.",
+      };
+    }
 
     const { data: invitedData, error: inviteError } = await svc.auth.admin
       .inviteUserByEmail(normalized, {
