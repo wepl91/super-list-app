@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { getSupabase, supabaseConfigured } from "./client";
+import { getSupabase, getAppOrigin, supabaseConfigured } from "./client";
 export type AuthMethod = "email" | "google";
 
 type AuthStatus = "loading" | "signedOut" | "signedIn" | "unconfigured";
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: getAppOrigin() },
     });
     if (err) setError(err.message);
   }, []);
