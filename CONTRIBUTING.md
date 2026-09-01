@@ -1,70 +1,73 @@
 # Contribuir
 
-Este proyecto sigue un flujo de trabajo GitFlow simplificado, manejado con
-**git puro** (no hace falta el plugin `git-flow`). Tenemos dos ramas de largo
-plazo:
+Este proyecto sigue un flujo de trabajo GitFlow manejado con **git puro** (no
+hace falta el plugin `git-flow`). Hay dos ramas de largo plazo:
 
-- `main` — producción. Solo se recibe desde `develop` (releases) o desde
-  `hotfix/*` (arreglos urgentes). Nunca se trabaja directamente acá.
+- `main`/`master` — producción. Solo se recibe desde `develop` (releases) o
+  desde `hotfix/*` (arreglos urgentes). Nunca se trabaja directamente acá.
 - `develop` — integración/diaria. Es la rama base de trabajo.
 
-Todas las ramas de trabajo deben ramificarse de la rama correcta y volver a
-ella para su integración.
+## Rol del asistente (opencode)
+
+El asistente (IA) se encarga de **desarrollar**. NO hace merge ni cierra
+trabajo sobre `develop` ni `main`. El flujo es:
+
+1. Desde un spec (en `specs/`) sale un branch de tipo
+   `feature/`, `enhancement/` o `fix/` **desde `develop`** (o `hotfix/`
+   **desde `main`**).
+2. El asistente desarrolla **dentro de ese branch** y hace commits.
+3. El asistente **pushea solo su branch al remoto** (`git push -u origin
+   <branch>`), sin tocar `develop` ni `main`.
+4. El dueño (humano) arma el **PR** del branch hacia `develop` (o hacia
+   `main` en el caso de `hotfix/*`) y lo mergea.
+
+El asistente **no mergea ni borra** branches contra `develop`/`main`. Eso lo
+hace siempre el dueño mediante PR.
 
 ## Ramas
 
-| Tipo          | Sale de   | Vuelve a  | Nombre                    |
+| Tipo          | Sale de   | PR hacia  | Nombre                    |
 | ------------- | --------- | --------- | ------------------------- |
 | Feature       | `develop` | `develop` | `feature/<descripcion>`   |
 | Fix           | `develop` | `develop` | `fix/<descripcion>`       |
 | Enhancement   | `develop` | `develop` | `enhancement/<descripcion>`|
-| Hotfix        | `main`    | `main` y `develop` | `hotfix/<descripcion>` |
+| Hotfix        | `main`    | `main`    | `hotfix/<descripcion>`    |
 
 ### Feature / Fix / Enhancement
 
 ```bash
+# el asistente:
 git checkout develop
 git checkout -b feature/autenticacion-google
 
-# ... trabajás y hacés commits con mensajes claros ...
+# ... desarrolla y hace commits ...
 
-git checkout develop
-git merge feature/autenticacion-google
-git push origin develop
-
-# opcional: borrar la rama local
-git branch -d feature/autenticacion-google
+# push SOLO del branch al remoto (sin tocar develop/main):
+git push -u origin feature/autenticacion-google
 ```
 
-### Release (a producción)
-
-```bash
-git checkout main
-git merge develop
-git push origin main
-```
+Luego el **dueño** arma el PR `feature/autenticacion-google → develop` y lo
+mergea.
 
 ### Hotfix (arreglo urgente sobre producción)
 
-Sale de `main` y se integra tanto en `main` como en `develop` para no perderlo:
-
 ```bash
+# el asistente:
 git checkout main
 git checkout -b hotfix/correccion-critica
 
 # ... fix + commit ...
 
-git checkout main
-git merge hotfix/correccion-critica
-git push origin main
-
-# llevarlo también a develop
-git checkout develop
-git merge hotfix/correccion-critica
-git push origin develop
-
-git branch -d hotfix/correccion-critica
+# push SOLO del branch:
+git push -u origin hotfix/correccion-critica
 ```
+
+Luego el **dueño** arma el PR `hotfix/correccion-critica → main` y lo mergea,
+y decide si propagarlo a `develop`.
+
+## Release (a producción)
+
+Lo hace el **dueño**: PR / merge de `develop` → `main`.
 
 ## Convenciones
 
