@@ -80,9 +80,10 @@ export default function ListItemRow({
             <input
               id="edit-qty"
               type="number"
-              min={1}
+              min={0}
+              step="0.01"
               value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+              onChange={(e) => setQuantity(Math.max(0, Number(e.target.value) || 0))}
               className="w-24 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground dark:border-zinc-700"
             />
             <label htmlFor="edit-unit" className="sr-only">
