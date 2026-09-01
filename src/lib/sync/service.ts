@@ -34,7 +34,8 @@ export async function pullAll(
 
   const { data: listRows, error: listError } = await supabase.from("lists")
     .select("id, owner_id, name, position, created_at, updated_at")
-    .in("id", allListIds);
+    .in("id", allListIds)
+    .order("position", { ascending: true });
 
   if (listError) throw listError;
 
@@ -44,7 +45,8 @@ export async function pullAll(
 
   const { data: itemRows, error: itemError } = await supabase.from("list_items")
     .select("*")
-    .in("list_id", allListIds);
+    .in("list_id", allListIds)
+    .order("position", { ascending: true });
 
   if (itemError) throw itemError;
 
