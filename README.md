@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Super List
 
-## Getting Started
+Aplicación de **lista de supermercado colaborativa en tiempo real**, construida
+con Next.js, React y Supabase.
 
-First, run the development server:
+## Stack
+
+- **Frontend:** Next.js 16 (Turbopack) + React 19 + Tailwind CSS
+- **Estado:** Zustand (con persistencia)
+- **Backend/DB:** Supabase (auth Google/email, PostgreSQL + RLS, realtime)
+- **Extras:** dnd-kit (reordenar), web-push (notificaciones), Serwist (PWA)
+
+## Funcionalidades
+
+- Crear, renombrar, duplicar y eliminar listas
+- Compartir listas con otros usuarios por email (invitación a nuevos o
+  adición directa a quienes ya tienen cuenta)
+- Ver los emails de las personas con las que compartís cada lista (solo owner)
+- Sincronización en tiempo real entre dispositivos
+- Notificaciones push
+- Soporte PWA (instalable) con tema claro/oscuro
+
+## Comenzar
+
+Prerrequisitos: Node.js (vía nvm, v24) y npm.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrí [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Variables de entorno
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Creá un archivo `.env.local` (no se versiona). Variables necesarias según el
+auth y Supabase que uses. Podés pedir un ejemplo al owner del repo.
 
-## Learn More
+## Comandos útiles
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev        # servidor de desarrollo
+npm run build      # build de producción
+npm run lint       # ESLint
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Base de datos / migraciones
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Ver la convención en la cabecera de `supabase/schema.sql`. Cada cambio de
+schema va en un archivo de migración **nuevo** en `supabase/migrations/`,
+idempotente, y se ejecuta por separado en el SQL Editor.
 
-## Deploy on Vercel
+## Contribuir
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ver [`CONTRIBUTING.md`](./CONTRIBUTING.md) para el flujo de ramas (GitFlow con
+`main` + `develop`).
