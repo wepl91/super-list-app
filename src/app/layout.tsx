@@ -4,6 +4,7 @@ import { SerwistProvider } from "@serwist/turbopack/react";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/supabase/auth";
 import { SyncProvider } from "@/lib/sync/SyncProvider";
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css";
 
 const nunitoSans = Nunito_Sans({
@@ -80,7 +81,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <AuthProvider>
             <SyncProvider />
-            <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
+            <SerwistProvider swUrl="/serwist/sw.js">
+              <>
+                {children}
+                <Analytics />
+              </>
+            </SerwistProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
