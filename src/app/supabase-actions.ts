@@ -19,11 +19,32 @@ async function getRequestOrigin(): Promise<string | null> {
   }
 }
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+// Subject de VAPID: web-push exige una URL o mailto: válidos. Normalizamos por
+// si en el entorno se configuró el email sin el prefijo mailto: (p.ej.
+// "w.e.p.91@gmail.com") y protegemos para que un valor inválido jamás rompa
+// las server actions (incluida addMemberByEmail).
+function vapidSubject(): string {
+  const raw = process.env.VAPID_EMAIL?.trim();
+  if (!raw) return "mailto:super-list@example.com";
+  if (/^(https?:|mailto:)/i.test(raw)) return raw;
+  return `mailto:${raw}`;
+}
+
+function configureWebPush() {
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) {
+    console.warn("Web push no configurado (faltan claves VAPID).");
+    return;
+  }
+  try {
+    webpush.setVapidDetails(vapidSubject(), publicKey, privateKey);
+  } catch (err) {
+    console.error("Error configurando web push (VAPID):", err);
+  }
+}
+
+configureWebPush();
 
 /**
  * Cliente con rol service (solo servidor): permite resolver el email del otro

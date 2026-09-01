@@ -17,6 +17,7 @@ import ListCard from "@/components/ListCard";
 import { useListStore } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
 import { useAuth } from "@/lib/supabase/auth";
+import type { List } from "@/lib/types";
 import AuthGateCta from "@/components/AuthGateCta";
 import InstallPrompt from "@/components/InstallPrompt";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -30,8 +31,9 @@ export default function Home() {
   const { status } = useAuth();
   const isSignedIn = status === "signedIn";
 
-  const myLists = lists.filter((l) => l.role === "owner");
-  const sharedLists = lists.filter((l) => l.role === "editor");
+  const byPosition = (a: List, b: List) => a.position - b.position;
+  const myLists = lists.filter((l) => l.role === "owner").sort(byPosition);
+  const sharedLists = lists.filter((l) => l.role === "editor").sort(byPosition);
 
   const [newName, setNewName] = useState("");
 
