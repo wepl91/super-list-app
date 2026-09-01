@@ -11,9 +11,15 @@ import AddMemberForm from "@/components/AddMemberForm";
 interface ListCardProps {
   list: List;
   isOwner?: boolean;
+  /** Modo solo lectura (sin sesión): oculta las acciones de escritura. */
+  isReadOnly?: boolean;
 }
 
-export default function ListCard({ list, isOwner = true }: ListCardProps) {
+export default function ListCard({
+  list,
+  isOwner = true,
+  isReadOnly = false,
+}: ListCardProps) {
   const cloneList = useListStore((s) => s.cloneList);
   const deleteList = useListStore((s) => s.deleteList);
   const renameList = useListStore((s) => s.renameList);
@@ -62,7 +68,7 @@ export default function ListCard({ list, isOwner = true }: ListCardProps) {
   }, [menuOpen]);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: list.id, disabled: !isOwner });
+    useSortable({ id: list.id, disabled: !isOwner || isReadOnly });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -116,7 +122,7 @@ export default function ListCard({ list, isOwner = true }: ListCardProps) {
       }`}
     >
       <div className="flex items-center gap-3 p-3">
-        {isOwner && (
+        {isOwner && !isReadOnly && (
           <button
             type="button"
             aria-label={`Reordenar ${list.name}`}
@@ -224,7 +230,7 @@ export default function ListCard({ list, isOwner = true }: ListCardProps) {
           </Link>
         )}
 
-        {isOwner && (
+        {isOwner && !isReadOnly && (
           <div className="relative shrink-0" ref={menuRef}>
             <button
               type="button"
@@ -340,7 +346,7 @@ export default function ListCard({ list, isOwner = true }: ListCardProps) {
         )}
       </div>
 
-      {isOwner && shareOpen && (
+      {isOwner && !isReadOnly && shareOpen && (
         <div className="border-t border-zinc-200 p-3 dark:border-zinc-700">
           <AddMemberForm listId={list.id} onClose={() => setShareOpen(false)} />
         </div>

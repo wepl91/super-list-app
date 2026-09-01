@@ -16,6 +16,8 @@ interface ListItemRowProps {
     quantity: number;
     unit?: string;
   }) => void;
+  /** Modo solo lectura (sin sesión): deshabilita completar/editar/eliminar. */
+  isReadOnly?: boolean;
 }
 
 function quantityLabel(item: ListItem): string {
@@ -30,6 +32,7 @@ export default function ListItemRow({
   onEdit,
   onCancelEdit,
   onSave,
+  isReadOnly = false,
 }: ListItemRowProps) {
   const toggleItem = useListStore((s) => s.toggleItem);
   const deleteItem = useListStore((s) => s.deleteItem);
@@ -119,9 +122,12 @@ export default function ListItemRow({
       <input
         type="checkbox"
         checked={item.completed}
-        onChange={() => toggleItem(listId, item.id)}
+        onChange={() => {
+          if (!isReadOnly) toggleItem(listId, item.id);
+        }}
+        disabled={isReadOnly}
         aria-label={`Completar ${item.name}`}
-        className="h-4 w-4 shrink-0 accent-primary"
+        className="h-4 w-4 shrink-0 accent-primary disabled:opacity-50"
       />
       <div className="min-w-0 flex-1">
         <p
@@ -141,43 +147,47 @@ export default function ListItemRow({
         {quantityLabel(item)}
       </span>
       <div className="flex shrink-0 gap-1">
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label={`Editar ${item.name}`}
-          title="Editar"
-          className="rounded-lg p-2 text-text-secondary hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
-        >
-          <svg
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className="h-4 w-4"
-            aria-hidden="true"
-          >
-            <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
-            <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          onClick={() => deleteItem(listId, item.id)}
-          aria-label={`Eliminar ${item.name}`}
-          title="Eliminar"
-          className="rounded-lg p-2 text-text-secondary hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
-        >
-          <svg
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className="h-4 w-4"
-            aria-hidden="true"
-          >
-            <path
-              fillRule="evenodd"
-              d="M8.75 1A2.75 2.75 0 0 0 6 3.75V4H3a.75.75 0 0 0 0 1.5h.04l.81 9.9A2.25 2.25 0 0 0 6.09 17.5h7.82a2.25 2.25 0 0 0 2.24-2.1l.81-9.9H17a.75.75 0 0 0 0-1.5h-3v-.25A2.75 2.75 0 0 0 11.25 1h-2.5ZM7.5 3.75c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5v-.25ZM7 8.75a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 7 8.75Zm6 0a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 13 8.75Z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
+        {!isReadOnly && (
+          <>
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Editar ${item.name}`}
+              title="Editar"
+              className="rounded-lg p-2 text-text-secondary hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
+                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => deleteItem(listId, item.id)}
+              aria-label={`Eliminar ${item.name}`}
+              title="Eliminar"
+              className="rounded-lg p-2 text-text-secondary hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.75 1A2.75 2.75 0 0 0 6 3.75V4H3a.75.75 0 0 0 0 1.5h.04l.81 9.9A2.25 2.25 0 0 0 6.09 17.5h7.82a2.25 2.25 0 0 0 2.24-2.1l.81-9.9H17a.75.75 0 0 0 0-1.5h-3v-.25A2.75 2.75 0 0 0 11.25 1h-2.5ZM7.5 3.75c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5v-.25ZM7 8.75a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 7 8.75Zm6 0a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 13 8.75Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
     </li>
   );
