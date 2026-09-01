@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/supabase/auth";
 import { useHydrated } from "@/lib/useHydrated";
+import { inviteToApp } from "@/app/supabase-actions";
+import { OPEN_LOGIN_EVENT } from "@/lib/loginPrompt";
 
 export default function UserMenu() {
   const {
@@ -23,6 +25,48 @@ export default function UserMenu() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [busy, setBusy] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Invitar a usar la app (solo admin)
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
+
+  const isAdmin =
+    !!user?.email &&
+    !!process.env.NEXT_PUBLIC_ADMIN_EMAIL &&
+    user.email.toLowerCase() ===
+      process.env.NEXT_PUBLIC_ADMIN_EMAIL.toLowerCase();
+
+  // Abre el modal de login cuando otro componente pide iniciar sesión (AuthGateCta)
+  useEffect(() => {
+    function onOpenLogin() {
+      if (status !== "signedIn") {
+        setMode("login");
+        setModalOpen(true);
+      }
+    }
+    window.addEventListener(OPEN_LOGIN_EVENT, onOpenLogin);
+    return () => window.removeEventListener(OPEN_LOGIN_EVENT, onOpenLogin);
+  }, [status]);
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteEmail.trim() || inviteBusy) return;
+    setInviteBusy(true);
+    setInviteResult(null);
+    const res = await inviteToApp(inviteEmail);
+    if (res.ok) {
+      setInviteResult({ ok: true, text: res.message });
+      setInviteEmail("");
+    } else {
+      setInviteResult({ ok: false, text: res.error });
+    }
+    setInviteBusy(false);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -118,6 +162,31 @@ export default function UserMenu() {
             )}
           </div>
           <div className="border-t border-zinc-200 dark:border-zinc-700" />
+          {isAdmin && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setInviteOpen(true);
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4 shrink-0 text-text-secondary"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.25a.75.75 0 0 0-1.5 0v2.5h-2.5a.75.75 0 0 0 0 1.5h2.5v2.5a.75.75 0 0 0 1.5 0v-2.5h2.5a.75.75 0 0 0 0-1.5h-2.5v-2.5Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Invitar a usar la app
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"
@@ -263,6 +332,77 @@ export default function UserMenu() {
             {mode === "register" && (
               <p className="mt-2 text-xs text-text-secondary">
                 Crearás una cuenta con ese email y contraseña.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {inviteOpen && isAdmin && (
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onClick={() => setInviteOpen(false)}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Invitar a usar la app"
+            className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-surface p-5 shadow-xl dark:border-zinc-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Invitar a usar la app</h3>
+              <button
+                type="button"
+                onClick={() => setInviteOpen(false)}
+                aria-label="Cerrar"
+                className="rounded-lg p-1 text-text-secondary hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
+              </button>
+            </div>
+            <p className="mb-3 text-xs text-text-secondary">
+              Autorizá el acceso de una persona y se le enviará una invitación
+              para crear su cuenta.
+            </p>
+            <form onSubmit={handleInvite} className="flex flex-col gap-2">
+              <label htmlFor="invite-email" className="sr-only">
+                Email de la persona
+              </label>
+              <input
+                id="invite-email"
+                type="email"
+                required
+                placeholder="email@persona.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
+              />
+              <button
+                type="submit"
+                disabled={inviteBusy}
+                className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {inviteBusy ? "Enviando..." : "Invitar"}
+              </button>
+            </form>
+            {inviteResult && (
+              <p
+                className={`mt-2 text-sm ${
+                  inviteResult.ok
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {inviteResult.text}
               </p>
             )}
           </div>

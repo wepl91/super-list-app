@@ -16,6 +16,8 @@ import {
 import ListCard from "@/components/ListCard";
 import { useListStore } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
+import { useAuth } from "@/lib/supabase/auth";
+import AuthGateCta from "@/components/AuthGateCta";
 import InstallPrompt from "@/components/InstallPrompt";
 import ThemeToggle from "@/components/ThemeToggle";
 import UserMenu from "@/components/UserMenu";
@@ -25,6 +27,8 @@ export default function Home() {
   const createList = useListStore((s) => s.createList);
   const reorderLists = useListStore((s) => s.reorderLists);
   const hydrated = useHydrated();
+  const { status } = useAuth();
+  const isSignedIn = status === "signedIn";
 
   const myLists = lists.filter((l) => l.role === "owner");
   const sharedLists = lists.filter((l) => l.role === "editor");
@@ -39,12 +43,14 @@ export default function Home() {
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (!isSignedIn) return; // la UI ya bloquea sin sesión
     if (!newName.trim()) return;
     createList(newName);
     setNewName("");
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!isSignedIn) return; // la UI ya bloquea sin sesión
     const { active, over } = event;
     if (over && active.id !== over.id) {
       reorderLists(String(active.id), String(over.id));
@@ -66,29 +72,35 @@ export default function Home() {
         </div>
       </header>
 
-      <form
-        onSubmit={handleCreate}
-        className="mb-6 flex gap-2"
-        aria-label="Crear lista"
-      >
-        <label htmlFor="new-list-name" className="sr-only">
-          Nombre de la lista
-        </label>
-        <input
-          id="new-list-name"
-          type="text"
-          placeholder="Nueva lista..."
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          className="flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
-        />
-        <button
-          type="submit"
-          className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90"
+      {isSignedIn ? (
+        <form
+          onSubmit={handleCreate}
+          className="mb-6 flex gap-2"
+          aria-label="Crear lista"
         >
-          Crear
-        </button>
-      </form>
+          <label htmlFor="new-list-name" className="sr-only">
+            Nombre de la lista
+          </label>
+          <input
+            id="new-list-name"
+            type="text"
+            placeholder="Nueva lista..."
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90"
+          >
+            Crear
+          </button>
+        </form>
+      ) : (
+        <div className="mb-6">
+          <AuthGateCta />
+        </div>
+      )}
 
       {hydrated && (
         <div className="flex flex-col gap-6">
@@ -100,7 +112,7 @@ export default function Home() {
               <p className="text-sm text-text-secondary">
                 Aún no tienes listas. Crea la primera arriba.
               </p>
-            ) : (
+            ) : isSignedIn ? (
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -117,6 +129,12 @@ export default function Home() {
                   </ul>
                 </SortableContext>
               </DndContext>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {myLists.map((list) => (
+                  <ListCard key={list.id} list={list} isOwner isReadOnly />
+                ))}
+              </ul>
             )}
           </section>
 

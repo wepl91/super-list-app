@@ -9,6 +9,7 @@ import ListItemRow from "@/components/ListItemRow";
 import ThemeToggle from "@/components/ThemeToggle";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
 import AddMemberForm from "@/components/AddMemberForm";
+import AuthGateCta from "@/components/AuthGateCta";
 import { useAuth } from "@/lib/supabase/auth";
 
 export default function ListDetailPage({
@@ -19,7 +20,8 @@ export default function ListDetailPage({
   const { id } = use(params);
   const list = useListStore((s) => s.lists.find((l) => l.id === id));
   const hydrated = useHydrated();
-  const { user } = useAuth();
+  const { user, status } = useAuth();
+  const isSignedIn = status === "signedIn";
 
   const isOwner = !!user && !!list && list.ownerId === user.id;
 
@@ -100,22 +102,25 @@ export default function ListDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <ListOptionsMenu
-            onSort={() => useListStore.getState().sortItems(list.id)}
-            onDeleteCompleted={() =>
-              useListStore.getState().deleteCompletedItems(list.id)
-            }
-            hasCompleted={hasCompleted}
-          />
+          {isSignedIn && (
+            <ListOptionsMenu
+              onSort={() => useListStore.getState().sortItems(list.id)}
+              onDeleteCompleted={() =>
+                useListStore.getState().deleteCompletedItems(list.id)
+              }
+              hasCompleted={hasCompleted}
+            />
+          )}
           <ThemeToggle />
         </div>
       </header>
 
-      <form
-        onSubmit={handleAdd}
-        className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700"
-        aria-label="Añadir elemento"
-      >
+      {isSignedIn ? (
+        <form
+          onSubmit={handleAdd}
+          className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700"
+          aria-label="Añadir elemento"
+        >
         <label htmlFor="item-name" className="sr-only">
           Nombre del elemento
         </label>
@@ -162,13 +167,18 @@ export default function ListDetailPage({
             className="flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
           />
         </div>
-        <button
-          type="submit"
-          className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90"
-        >
-          Añadir
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90"
+          >
+            Añadir
+          </button>
+        </form>
+      ) : (
+        <div className="mb-6">
+          <AuthGateCta />
+        </div>
+      )}
 
       {list.items.length === 0 ? (
         <p className="text-sm text-text-secondary">
@@ -181,16 +191,17 @@ export default function ListDetailPage({
               key={item.id}
               listId={list.id}
               item={item}
-              editing={editingId === item.id}
+              editing={editingId === item.id && isSignedIn}
               onEdit={() => setEditingId(item.id)}
               onCancelEdit={() => setEditingId(null)}
               onSave={handleSaveEdit}
+              isReadOnly={!isSignedIn}
             />
           ))}
         </ul>
       )}
 
-      {isOwner && (
+      {isOwner && isSignedIn && (
         <div className="mt-8">
           <AddMemberForm listId={list.id} />
         </div>
