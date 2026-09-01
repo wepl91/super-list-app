@@ -36,22 +36,30 @@ export default function AddMemberForm({
     if (!email.trim() || busy) return;
     setBusy(true);
     setResult(null);
-    const res = await addMemberByEmail(listId, email);
-    if (res.ok) {
-      setResult({ ok: true, text: res.message });
-      setEmail("");
-      getSharedMemberEmails()
-        .then((shared) => {
-          const members = shared
-            .filter((s) => s.listId === listId)
-            .map((s) => ({ userId: s.userId, email: s.email }));
-          setListSharedMembers(listId, members);
-        })
-        .catch(() => {});
-    } else {
-      setResult({ ok: false, text: res.error });
+    try {
+      const res = await addMemberByEmail(listId, email);
+      if (res.ok) {
+        setResult({ ok: true, text: res.message });
+        setEmail("");
+        getSharedMemberEmails()
+          .then((shared) => {
+            const members = shared
+              .filter((s) => s.listId === listId)
+              .map((s) => ({ userId: s.userId, email: s.email }));
+            setListSharedMembers(listId, members);
+          })
+          .catch(() => {});
+      } else {
+        setResult({ ok: false, text: res.error });
+      }
+    } catch {
+      setResult({
+        ok: false,
+        text: "Hubo un error inesperado. Intentalo de nuevo.",
+      });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   return (
