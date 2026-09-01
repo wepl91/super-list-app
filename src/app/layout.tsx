@@ -27,6 +27,12 @@ export const metadata: Metadata = {
     template: "%s - Super List",
   },
   description: APP_DESCRIPTION,
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-dark.svg", type: "image/svg+xml", media: "(prefers-color-scheme: dark)" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
