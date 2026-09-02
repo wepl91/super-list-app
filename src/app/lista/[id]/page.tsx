@@ -36,6 +36,7 @@ export default function ListDetailPage({
   const [quantity, setQuantity] = useState(1);
   const [unit, setUnit] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const hasList = list !== undefined;
 
@@ -167,11 +168,19 @@ export default function ListDetailPage({
                 useListStore.getState().deleteCompletedItems(list.id)
               }
               hasCompleted={hasCompleted}
+              onShare={() => setShareOpen((v) => !v)}
+              canShare={isOwner}
             />
           )}
           <ThemeToggle />
         </div>
       </header>
+
+      {shareOpen && isOwner && isSignedIn && (
+        <div className="mb-4">
+          <AddMemberForm listId={list.id} onClose={() => setShareOpen(false)} />
+        </div>
+      )}
 
       {isSignedIn ? (
         focusMode ? (
@@ -287,12 +296,6 @@ export default function ListDetailPage({
             />
           ))}
         </ul>
-      )}
-
-      {isOwner && isSignedIn && (
-        <div className="mt-8">
-          <AddMemberForm listId={list.id} />
-        </div>
       )}
     </div>
   );

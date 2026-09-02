@@ -6,12 +6,16 @@ interface ListOptionsMenuProps {
   onSort: () => void;
   onDeleteCompleted: () => void;
   hasCompleted: boolean;
+  onShare?: () => void;
+  canShare?: boolean;
 }
 
 export default function ListOptionsMenu({
   onSort,
   onDeleteCompleted,
   hasCompleted,
+  onShare,
+  canShare = false,
 }: ListOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -60,6 +64,28 @@ export default function ListOptionsMenu({
           aria-labelledby="list-options"
           className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-xl border border-zinc-200 bg-surface p-1 shadow-lg dark:border-zinc-700"
         >
+          {canShare && onShare && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onShare();
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4 shrink-0 text-text-secondary"
+                aria-hidden="true"
+              >
+                <path d="M13 4.5a2.5 2.5 0 1 1 .7 1.77L8.99 9.22a2.5 2.5 0 0 1 0 1.56l4.71 2.95a2.5 2.5 0 1 1-.7 1.77l-4.71-2.95a2.5 2.5 0 1 1-3.58-2.92L6.1 10l-1.39 1.37a2.5 2.5 0 1 1 3.58 2.92l4.71 2.95a2.5 2.5 0 1 1 3.5 3.26V14.5c0-.65.25-1.24.66-1.68l-5.06-3.16L15.66 6.5H16v4.12a2.5 2.5 0 0 1 2 2.38V14a2.5 2.5 0 1 1-4 0v-.62a2.5 2.5 0 0 1 .66-1.68l-5.06-3.16Z" />
+              </svg>
+              Compartir lista
+            </button>
+          )}
+
           <button
             type="button"
             role="menuitem"
