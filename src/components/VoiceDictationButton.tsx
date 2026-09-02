@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 interface SpeechRecognitionConstructor {
   new (): SpeechRecognitionInstance;
@@ -49,36 +49,54 @@ export default function VoiceDictationButton({
   // Feature detection una sola vez al montar (SSR-safe).
   const [supported] = useState(() => getRecognitionCtor() !== null);
   const [listening, setListening] = useState(false);
+  const recRef = useRef<SpeechRecognitionInstance | null>(null);
+  const stoppedRef = useRef(false);
 
   if (!supported) return null;
 
   function handleToggle() {
     if (listening) {
+      stoppedRef.current = true;
+      recRef.current?.stop();
       setListening(false);
       return;
     }
     const Ctor = getRecognitionCtor();
     if (!Ctor) return;
     const rec = new Ctor();
+    recRef.current = rec;
+    stoppedRef.current = false;
+    let shouldRestart = true;
     rec.lang = "es-AR";
-    rec.continuous = true;
+    rec.continuous = false;
     rec.interimResults = true;
     rec.onstart = () => setListening(true);
-    rec.onend = () => setListening(false);
-    rec.onresult = (event) => {
-      let interimText = "";
-      let finalText = "";
-      const results = event.results;
-      for (let i = 0; i < results.length; i++) {
-        const r = results[i];
-        const transcript = r[0]?.transcript ?? "";
-        if (r.isFinal) finalText += transcript;
-        else interimText += transcript;
+    rec.onend = () => {
+      setListening(false);
+      if (recRef.current === rec) recRef.current = null;
+      if (stoppedRef.current) return;
+      // Si terminó por una frase detectada o por silencio, seguimos
+      // escuchando (una frase a la vez) hasta que el usuario detenga.
+      if (shouldRestart) {
+        try {
+          rec.start();
+        } catch {
+          /* noop */
+        }
       }
-      if (interimText) onInterim?.(interimText.trim());
-      if (finalText.trim()) {
-        onFinal?.(finalText.trim());
+    };
+    rec.onresult = (event) => {
+      const results = event.results;
+      // Tomamos el último resultado: representa lo que se acaba de decir.
+      const last = results[results.length - 1];
+      const transcript = last?.[0]?.transcript?.trim() ?? "";
+      if (!transcript) return;
+      if (last.isFinal) {
+        onFinal?.(transcript);
+        shouldRestart = false;
         rec.stop();
+      } else {
+        onInterim?.(transcript);
       }
     };
     rec.onerror = (event) => {
