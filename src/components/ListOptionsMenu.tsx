@@ -1,19 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface ListOptionsMenuProps {
   onSort: () => void;
   onDeleteCompleted: () => void;
   hasCompleted: boolean;
+  hideCompleted: boolean;
+  onToggleHideCompleted: () => void;
+  onShare?: () => void;
+  canShare?: boolean;
 }
 
 export default function ListOptionsMenu({
   onSort,
   onDeleteCompleted,
   hasCompleted,
+  hideCompleted,
+  onToggleHideCompleted,
+  onShare,
+  canShare = false,
 }: ListOptionsMenuProps) {
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,6 +70,28 @@ export default function ListOptionsMenu({
           aria-labelledby="list-options"
           className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-xl border border-zinc-200 bg-surface p-1 shadow-lg dark:border-zinc-700"
         >
+          {canShare && onShare && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onShare();
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4 shrink-0 text-text-secondary"
+                aria-hidden="true"
+              >
+                <path d="M13 4.5a2.5 2.5 0 1 1 .7 1.77L8.99 9.22a2.5 2.5 0 0 1 0 1.56l4.71 2.95a2.5 2.5 0 1 1-.7 1.77l-4.71-2.95a2.5 2.5 0 1 1-3.58-2.92L6.1 10l-1.39 1.37a2.5 2.5 0 1 1 3.58 2.92l4.71 2.95a2.5 2.5 0 1 1 3.5 3.26V14.5c0-.65.25-1.24.66-1.68l-5.06-3.16L15.66 6.5H16v4.12a2.5 2.5 0 0 1 2 2.38V14a2.5 2.5 0 1 1-4 0v-.62a2.5 2.5 0 0 1 .66-1.68l-5.06-3.16Z" />
+              </svg>
+              Compartir lista
+            </button>
+          )}
+
           <button
             type="button"
             role="menuitem"
@@ -82,11 +114,38 @@ export default function ListOptionsMenu({
 
           <button
             type="button"
+            role="menuitemcheckbox"
+            aria-checked={hideCompleted}
+            onClick={() => {
+              onToggleHideCompleted();
+              setOpen(false);
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className={`h-4 w-4 shrink-0 ${hideCompleted ? "text-primary" : "text-text-secondary"}`}
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 3c-4.39 0-7.36 5.34-7.36 5.34S1.34 10 2.64 11.66 6.61 17 10 17s7.36-5.34 7.36-5.34A14.7 14.7 0 0 0 17.36 8.5C17.36 3.16 14.39 3 10 3Zm0 2a.75.75 0 0 0-.75.75v2.5a.75.75 0 0 0 1.5 0v-2.5A.75.75 0 0 0 10 5Zm-5.3.3a.75.75 0 0 0-1.06 1.06l1.94 1.94a.75.75 0 1 0 1.06-1.06L4.7 5.3Zm10.6 0a.75.75 0 0 1 1.06 1.06l-1.94 1.94a.75.75 0 1 1-1.06-1.06l1.94-1.94Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {hideCompleted
+              ? "Mostrar elementos tachados"
+              : "Ocultar elementos tachados"}
+          </button>
+
+          <button
+            type="button"
             role="menuitem"
             disabled={!hasCompleted}
             onClick={() => {
-              onDeleteCompleted();
               setOpen(false);
+              setConfirmOpen(true);
             }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-red-950 dark:hover:text-red-400"
           >
@@ -106,6 +165,19 @@ export default function ListOptionsMenu({
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Eliminar completados"
+        message="¿Seguro que querés eliminar todos los elementos tachados de esta lista? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        destructive
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          onDeleteCompleted();
+        }}
+      />
     </div>
   );
 }

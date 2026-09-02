@@ -7,6 +7,7 @@ import { useListStore } from "@/lib/stores/listStore";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import AddMemberForm from "@/components/AddMemberForm";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface ListCardProps {
   list: List;
@@ -28,6 +29,7 @@ export default function ListCard({
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState(list.name);
   const [syncTipOpen, setSyncTipOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -79,10 +81,7 @@ export default function ListCard({
 
   function handleDelete() {
     setMenuOpen(false);
-    const ok = window.confirm(
-      `¿Seguro que quieres eliminar la lista "${list.name}"? Esta acción no se puede deshacer.`
-    );
-    if (ok) deleteList(list.id);
+    setDeleteOpen(true);
   }
 
   function handleEdit(e: React.FormEvent) {
@@ -351,6 +350,19 @@ export default function ListCard({
           <AddMemberForm listId={list.id} onClose={() => setShareOpen(false)} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Eliminar lista"
+        message={`¿Seguro que querés eliminar la lista "${list.name}"? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        destructive
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          setDeleteOpen(false);
+          deleteList(list.id);
+        }}
+      />
     </li>
   );
 }

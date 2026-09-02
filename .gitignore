@@ -43,3 +43,6 @@ public/swe-worker*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# others
+specs.tmp.md
