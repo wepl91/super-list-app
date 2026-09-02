@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useListStore } from "@/lib/stores/listStore";
 import { usePreferences } from "@/lib/stores/preferencesStore";
@@ -14,6 +14,7 @@ import AddMemberForm from "@/components/AddMemberForm";
 import AuthGateCta from "@/components/AuthGateCta";
 import VoiceDictationButton from "@/components/VoiceDictationButton";
 import { useAuth } from "@/lib/supabase/auth";
+import { getSharedMemberEmails } from "@/app/supabase-actions";
 
 export default function ListDetailPage({
   params,
@@ -39,6 +40,25 @@ export default function ListDetailPage({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  const listId = list?.id;
+
+  useEffect(() => {
+    if (!isSignedIn || !isOwner || !listId) return;
+    let cancelled = false;
+    getSharedMemberEmails()
+      .then((shared) => {
+        if (cancelled) return;
+        const members = shared
+          .filter((s) => s.listId === listId)
+          .map((s) => ({ userId: s.userId, email: s.email }));
+        useListStore.getState().setListSharedMembers(listId, members);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn, isOwner, listId]);
 
   const hasList = list !== undefined;
 
@@ -127,6 +147,12 @@ export default function ListDetailPage({
               {list.items.length} elemento{list.items.length === 1 ? "" : "s"} ·{" "}
               {completed} completado{completed === 1 ? "" : "s"}
             </p>
+            {isOwner && list.sharedMembers && list.sharedMembers.length > 0 && (
+              <p className="text-sm text-text-secondary">
+                Compartida con:{" "}
+                {list.sharedMembers.map((m) => m.email).join(", ")}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1">
