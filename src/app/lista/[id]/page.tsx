@@ -99,20 +99,35 @@ export default function ListDetailPage({
 
   return (
     <div className="mx-auto w-full max-w-lg flex-1 p-6">
-      <Link
-        href="/"
-        className="mb-4 inline-block text-sm font-medium text-primary hover:underline"
-      >
-        ← Volver
-      </Link>
-
       <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-primary">{list.name}</h1>
-          <p className="text-sm text-text-secondary">
-            {list.items.length} elemento{list.items.length === 1 ? "" : "s"} ·{" "}
-            {completed} completado{completed === 1 ? "" : "s"}
-          </p>
+        <div className="flex items-start gap-1">
+          <Link
+            href="/"
+            aria-label="Volver al inicio"
+            className="mt-1 rounded-lg p-0.5 text-foreground transition-colors hover:text-primary"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="h-6 w-6"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-primary">{list.name}</h1>
+            <p className="text-sm text-text-secondary">
+              {list.items.length} elemento{list.items.length === 1 ? "" : "s"} ·{" "}
+              {completed} completado{completed === 1 ? "" : "s"}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
