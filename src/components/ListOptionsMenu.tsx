@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface ListOptionsMenuProps {
   onSort: () => void;
@@ -18,6 +19,7 @@ export default function ListOptionsMenu({
   canShare = false,
 }: ListOptionsMenuProps) {
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -111,8 +113,8 @@ export default function ListOptionsMenu({
             role="menuitem"
             disabled={!hasCompleted}
             onClick={() => {
-              onDeleteCompleted();
               setOpen(false);
+              setConfirmOpen(true);
             }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-red-950 dark:hover:text-red-400"
           >
@@ -132,6 +134,19 @@ export default function ListOptionsMenu({
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Eliminar completados"
+        message="¿Seguro que querés eliminar todos los elementos tachados de esta lista? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        destructive
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          onDeleteCompleted();
+        }}
+      />
     </div>
   );
 }

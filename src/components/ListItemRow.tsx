@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useListStore } from "@/lib/stores/listStore";
 import { haptic } from "@/lib/haptics";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import type { ListItem } from "@/lib/types";
 
 interface ListItemRowProps {
@@ -45,6 +46,7 @@ export default function ListItemRow({
   const [description, setDescription] = useState(item.description ?? "");
   const [quantity, setQuantity] = useState(item.quantity);
   const [unit, setUnit] = useState(item.unit ?? "");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -194,7 +196,7 @@ export default function ListItemRow({
             </button>
             <button
               type="button"
-              onClick={() => deleteItem(listId, item.id)}
+              onClick={() => setDeleteOpen(true)}
               aria-label={`Eliminar ${item.name}`}
               title="Eliminar"
               className={`rounded-lg text-text-secondary hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400 ${
@@ -217,6 +219,21 @@ export default function ListItemRow({
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Eliminar elemento"
+        message={`¿Seguro que querés eliminar "${item.name}"? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        destructive
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          if (!isReadOnly) {
+            deleteItem(listId, item.id);
+          }
+          setDeleteOpen(false);
+        }}
+      />
     </li>
   );
 }
