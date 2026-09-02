@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  variant?: "confirm" | "info";
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -20,6 +22,7 @@ export default function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   destructive = false,
+  variant = "confirm",
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -54,17 +57,19 @@ export default function ConfirmDialog({
         <h2 id="confirm-title" className="text-base font-semibold">
           {title}
         </h2>
-        <p id="confirm-message" className="mt-2 text-sm text-text-secondary">
+        <div id="confirm-message" className="mt-2 text-sm text-text-secondary">
           {message}
-        </p>
+        </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-          >
-            {cancelLabel}
-          </button>
+          {variant === "confirm" && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             ref={confirmRef}
             type="button"

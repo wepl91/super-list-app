@@ -84,4 +84,20 @@ describe("ConfirmDialog", () => {
     render(<ConfirmDialog {...baseProps()} confirmLabel="Eliminar" />);
     expect(screen.getByRole("button", { name: "Eliminar" })).toHaveFocus();
   });
+
+  it("en variante info muestra solo el botón de cierre", () => {
+    render(
+      <ConfirmDialog
+        {...baseProps()}
+        variant="info"
+        confirmLabel="Listo"
+        message={<ul><li>a@b.com</li></ul>}
+      />
+    );
+    expect(screen.getByText("a@b.com")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Listo" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar" })
+    ).not.toBeInTheDocument();
+  });
 });
