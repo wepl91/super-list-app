@@ -97,6 +97,31 @@ async function ensureAllowedEmail(
 }
 
 /**
+ * Busca el id de un usuario registrado por su email usando la admin API de
+ * Auth. La tabla `auth.users` NO es consultable vía supabase-js estándar
+ * (`PGRST205`: no está en el schema cache de PostgREST); `admin.listUsers` es
+ * la vía soportada. Devuelve null si el email no pertenece a ningún usuario.
+ */
+async function findExistingUserId(
+  svc: SupabaseClient,
+  email: string
+): Promise<string | null> {
+  const normalized = email.trim().toLowerCase();
+  // App friends & family: un listado paginado amplio cubre la práctica totalidad.
+  const { data, error } = await svc.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+  if (error) {
+    console.error("Error listando usuarios:", error);
+    return null;
+  }
+  return (
+    data?.users.find((u) => u.email?.toLowerCase() === normalized)?.id ?? null
+  );
+}
+
+/**
  * Solo el admin (email = ADMIN_EMAIL) puede invitar a usar la app a un email.
  * Verifica sesión + rol admin (server env), agrega el email a la allowlist y
  * luego envía la invitación por email (inviteUserByEmail).
@@ -235,19 +260,15 @@ export async function addMemberByEmail(
   // Determinar si el usuario ya está registrado en el proyecto. Si ya existe,
   // lo agregamos de una como miembro; si no, enviamos una invitación por email
   // (crea la cuenta cuando el invitado la complete, pudiendo entrar con Google).
+  // Nota: NO usar svc.from("auth.users") — esa tabla no está expuesta a
+  // PostgREST (PGRST205) y rompía la detección de usuarios existentes.
   const svc = getServiceClient();
-  const { data: existingUser } = await svc
-    .from("auth.users")
-    .select("id")
-    .ilike("email", normalized)
-    .maybeSingle();
-
-  let userId: string;
+  const existingUserId = await findExistingUserId(svc, normalized);
+  let userId = existingUserId;
   let invited = false;
 
-  if (existingUser?.id) {
-    userId = existingUser.id;
-  } else {
+  if (!userId) {
+    // El email no pertenece a ningún usuario registrado: hay que invitarlo.
     const origin =
       process.env.NEXT_PUBLIC_APP_URL ??
       (await getRequestOrigin()) ??
@@ -278,6 +299,10 @@ export async function addMemberByEmail(
     }
     userId = invitedData.user.id;
     invited = true;
+  }
+
+  if (!userId) {
+    return { ok: false, error: "No se pudo resolver el usuario destino." };
   }
 
   // Crear la membresía como 'editor' (ya verificamos que somos owner)
@@ -363,15 +388,17 @@ export async function getSharedMemberEmails(): Promise<SharedMemberEmails> {
     (profiles ?? []).map((p) => [p.user_id, p.email as string])
   );
 
-  // fallback: si algún miembro no tiene perfil, resolver de auth.users
+  // fallback: si algún miembro no tiene perfil, resolver su email vía la admin
+  // API de Auth (auth.users no es consultable por PostgREST — PGRST205).
   const missing = editors.filter((m) => !emailById.has(m.user_id));
   if (missing.length > 0) {
-    const { data: authRows } = await svc
-      .from("auth.users")
-      .select("id, email")
-      .in("id", missing.map((m) => m.user_id));
-    for (const r of authRows ?? []) {
-      if (r.email) emailById.set(r.id, r.email);
+    const { data } = await svc.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    const missingIds = new Set(missing.map((m) => m.user_id));
+    for (const u of data?.users ?? []) {
+      if (u.email && missingIds.has(u.id)) emailById.set(u.id, u.email);
     }
   }
 
