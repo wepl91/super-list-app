@@ -7,6 +7,8 @@ interface ListOptionsMenuProps {
   onSort: () => void;
   onDeleteCompleted: () => void;
   hasCompleted: boolean;
+  hideCompleted: boolean;
+  onToggleHideCompleted: () => void;
   onShare?: () => void;
   canShare?: boolean;
 }
@@ -15,6 +17,8 @@ export default function ListOptionsMenu({
   onSort,
   onDeleteCompleted,
   hasCompleted,
+  hideCompleted,
+  onToggleHideCompleted,
   onShare,
   canShare = false,
 }: ListOptionsMenuProps) {
@@ -106,6 +110,33 @@ export default function ListOptionsMenu({
               <path d="M3 3a1 1 0 0 0 0 2h11a1 1 0 1 0 0-2H3Zm0 4a1 1 0 0 0 0 2h7a1 1 0 1 0 0-2H3Zm0 4a1 1 0 1 0 0 2h4a1 1 0 1 0 0-2H3Zm12-3a1 1 0 1 0-2 0v5.586l-1.293-1.293a1 1 0 1 0-1.414 1.414l3 3a1 1 0 0 0 1.414 0l3-3a1 1 0 1 0-1.414-1.414L15 13.586V8Z" />
             </svg>
             Ordenar alfabéticamente
+          </button>
+
+          <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={hideCompleted}
+            onClick={() => {
+              onToggleHideCompleted();
+              setOpen(false);
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className={`h-4 w-4 shrink-0 ${hideCompleted ? "text-primary" : "text-text-secondary"}`}
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 3c-4.39 0-7.36 5.34-7.36 5.34S1.34 10 2.64 11.66 6.61 17 10 17s7.36-5.34 7.36-5.34A14.7 14.7 0 0 0 17.36 8.5C17.36 3.16 14.39 3 10 3Zm0 2a.75.75 0 0 0-.75.75v2.5a.75.75 0 0 0 1.5 0v-2.5A.75.75 0 0 0 10 5Zm-5.3.3a.75.75 0 0 0-1.06 1.06l1.94 1.94a.75.75 0 1 0 1.06-1.06L4.7 5.3Zm10.6 0a.75.75 0 0 1 1.06 1.06l-1.94 1.94a.75.75 0 1 1-1.06-1.06l1.94-1.94Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {hideCompleted
+              ? "Mostrar elementos tachados"
+              : "Ocultar elementos tachados"}
           </button>
 
           <button
