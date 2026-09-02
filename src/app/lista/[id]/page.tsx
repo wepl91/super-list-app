@@ -124,7 +124,7 @@ export default function ListDetailPage({
           <Link
             href="/"
             aria-label="Volver al inicio"
-            className="mt-1 rounded-lg p-0.5 text-foreground transition-colors hover:text-primary"
+            className="mt-1 rounded-lg p-0.5 text-primary transition-colors hover:opacity-80"
           >
             <svg
               viewBox="0 0 24 24"
