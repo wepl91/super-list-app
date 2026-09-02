@@ -97,6 +97,31 @@ async function ensureAllowedEmail(
 }
 
 /**
+ * Busca el id de un usuario registrado por su email usando la admin API de
+ * Auth. La tabla `auth.users` NO es consultable vía supabase-js estándar
+ * (`PGRST205`: no está en el schema cache de PostgREST); `admin.listUsers` es
+ * la vía soportada. Devuelve null si el email no pertenece a ningún usuario.
+ */
+async function findExistingUserId(
+  svc: SupabaseClient,
+  email: string
+): Promise<string | null> {
+  const normalized = email.trim().toLowerCase();
+  // App friends & family: un listado paginado amplio cubre la práctica totalidad.
+  const { data, error } = await svc.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+  if (error) {
+    console.error("Error listando usuarios:", error);
+    return null;
+  }
+  return (
+    data?.users.find((u) => u.email?.toLowerCase() === normalized)?.id ?? null
+  );
+}
+
+/**
  * Solo el admin (email = ADMIN_EMAIL) puede invitar a usar la app a un email.
  * Verifica sesión + rol admin (server env), agrega el email a la allowlist y
  * luego envía la invitación por email (inviteUserByEmail).
@@ -170,10 +195,12 @@ function displayName(user: {
   return "Alguien";
 }
 
-/** Envía un push a todas las suscripciones del usuario dado (best-effort). */
+/** Envía un push a todas las suscripciones del usuario dado (best-effort).
+ *  Las suscripciones inválidas (404/410) se eliminan de la tabla. */
 async function notifyUserListShared(
   userId: string,
-  message: string
+  message: string,
+  url?: string
 ): Promise<void> {
   const svc = getServiceClient();
   const { data: subs } = await svc
@@ -182,18 +209,29 @@ async function notifyUserListShared(
     .eq("user_id", userId);
   if (!subs || subs.length === 0) return;
 
+  const payload = JSON.stringify({
+    title: "Super List",
+    body: message,
+    icon: "/icon-192x192.png",
+    url,
+  });
+
   for (const sub of subs as unknown as StoredSubscription[]) {
     try {
-      await webpush.sendNotification(
-        sub,
-        JSON.stringify({
-          title: "Super List",
-          body: message,
-          icon: "/icon-192x192.png",
-        })
-      );
+      await webpush.sendNotification(sub, payload);
     } catch (err) {
-      console.error("Error enviando push al compartir:", err);
+      console.error("Error enviando push:", err);
+      const status =
+        typeof err === "object" && err !== null && "statusCode" in err
+          ? (err as { statusCode: unknown }).statusCode
+          : null;
+      if (status === 404 || status === 410) {
+        // endpoint ya no válido: limpiar la suscripción para no reintentar
+        await svc
+          .from("push_subscriptions")
+          .delete()
+          .eq("endpoint", sub.endpoint);
+      }
     }
   }
 }
@@ -235,19 +273,15 @@ export async function addMemberByEmail(
   // Determinar si el usuario ya está registrado en el proyecto. Si ya existe,
   // lo agregamos de una como miembro; si no, enviamos una invitación por email
   // (crea la cuenta cuando el invitado la complete, pudiendo entrar con Google).
+  // Nota: NO usar svc.from("auth.users") — esa tabla no está expuesta a
+  // PostgREST (PGRST205) y rompía la detección de usuarios existentes.
   const svc = getServiceClient();
-  const { data: existingUser } = await svc
-    .from("auth.users")
-    .select("id")
-    .ilike("email", normalized)
-    .maybeSingle();
-
-  let userId: string;
+  const existingUserId = await findExistingUserId(svc, normalized);
+  let userId = existingUserId;
   let invited = false;
 
-  if (existingUser?.id) {
-    userId = existingUser.id;
-  } else {
+  if (!userId) {
+    // El email no pertenece a ningún usuario registrado: hay que invitarlo.
     const origin =
       process.env.NEXT_PUBLIC_APP_URL ??
       (await getRequestOrigin()) ??
@@ -278,6 +312,10 @@ export async function addMemberByEmail(
     }
     userId = invitedData.user.id;
     invited = true;
+  }
+
+  if (!userId) {
+    return { ok: false, error: "No se pudo resolver el usuario destino." };
   }
 
   // Crear la membresía como 'editor' (ya verificamos que somos owner)
@@ -363,15 +401,17 @@ export async function getSharedMemberEmails(): Promise<SharedMemberEmails> {
     (profiles ?? []).map((p) => [p.user_id, p.email as string])
   );
 
-  // fallback: si algún miembro no tiene perfil, resolver de auth.users
+  // fallback: si algún miembro no tiene perfil, resolver su email vía la admin
+  // API de Auth (auth.users no es consultable por PostgREST — PGRST205).
   const missing = editors.filter((m) => !emailById.has(m.user_id));
   if (missing.length > 0) {
-    const { data: authRows } = await svc
-      .from("auth.users")
-      .select("id, email")
-      .in("id", missing.map((m) => m.user_id));
-    for (const r of authRows ?? []) {
-      if (r.email) emailById.set(r.id, r.email);
+    const { data } = await svc.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    const missingIds = new Set(missing.map((m) => m.user_id));
+    for (const u of data?.users ?? []) {
+      if (u.email && missingIds.has(u.id)) emailById.set(u.id, u.email);
     }
   }
 
@@ -381,4 +421,193 @@ export async function getSharedMemberEmails(): Promise<SharedMemberEmails> {
     if (email) result.push({ listId: m.list_id, userId: m.user_id, email });
   }
   return result;
+}
+
+export type SavePushSubscriptionInput = {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+};
+
+/**
+ * Registra (o actualiza por endpoint) la suscripción push del usuario actual.
+ * Es la contraparte del registro cliente (PushNotificationManager).
+ */
+export async function savePushSubscription(
+  subscription: SavePushSubscriptionInput
+): Promise<{ ok: boolean; error?: string }> {
+  const endpoint = subscription.endpoint?.trim();
+  const keys = subscription.keys;
+  if (
+    !endpoint ||
+    !keys ||
+    typeof keys.p256dh !== "string" ||
+    typeof keys.auth !== "string"
+  ) {
+    return { ok: false, error: "Suscripción inválida." };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "Necesitás iniciar sesión." };
+  }
+
+  const svc = getServiceClient();
+  const { error } = await svc.from("push_subscriptions").upsert(
+    { user_id: user.id, endpoint, keys },
+    { onConflict: "endpoint" }
+  );
+  if (error) {
+    console.error("Error guardando suscripción push:", error);
+    return { ok: false, error: "No se pudo guardar la suscripción." };
+  }
+  return { ok: true };
+}
+
+// Umbral de cambio_count para flush inmediato (consolidación).
+const NOTIFY_BATCH_THRESHOLD = 3;
+// Ventana (ms) tras el primer cambio de la ráfaga para cerrar el flush.
+const NOTIFY_WINDOW_MS = 45_000;
+
+type ChangeBatchRow = {
+  id: string;
+  member_id: string;
+  change_count: number;
+  first_change_at: string;
+  last_change_at: string;
+  last_actor_name: string | null;
+};
+
+/**
+ * Reporta un cambio estructural en una lista compartida. Acumula un contador
+ * por (lista, miembro destinatario) y, cuando la ráfaga supera el umbral o la
+ * ventana, envía a cada miembro una notificación consolidada:
+ * "[Nombre] hizo N cambios en [Lista]". No notifica al autor.
+ */
+export async function notifyListChanged(listId: string): Promise<void> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const svc = getServiceClient();
+  const { data: listRow } = await svc
+    .from("lists")
+    .select("id, name, owner_id")
+    .eq("id", listId)
+    .single();
+  if (!listRow) return;
+
+  // Miembros: owner + editors de la lista, excluyendo al autor del cambio.
+  const { data: members } = await svc
+    .from("list_members")
+    .select("user_id, role")
+    .eq("list_id", listId);
+  const memberIds = new Set(
+    (members ?? [])
+      .map((m) => m.user_id as string)
+      .filter((id) => id !== user.id)
+  );
+  if (listRow.owner_id !== user.id) memberIds.add(listRow.owner_id as string);
+  memberIds.delete(user.id);
+  if (memberIds.size === 0) return;
+
+  const now = new Date().toISOString();
+  const listName = (listRow.name as string) || "la lista";
+  const authorName = displayName(user);
+
+  for (const memberId of memberIds) {
+    // incrementar contador para este (lista, miembro)
+    const { data: existing } = await svc
+      .from("list_change_batches")
+      .select("id, change_count, first_change_at, last_change_at")
+      .eq("list_id", listId)
+      .eq("member_id", memberId)
+      .maybeSingle();
+
+    let row: ChangeBatchRow;
+    if (existing) {
+      const { data: updated } = await svc
+        .from("list_change_batches")
+        .update({
+          change_count: (existing.change_count as number) + 1,
+          last_change_at: now,
+          last_actor_name: authorName,
+        })
+        .eq("id", existing.id)
+        .select()
+        .maybeSingle();
+      row = updated as ChangeBatchRow;
+    } else {
+      const { data: inserted } = await svc
+        .from("list_change_batches")
+        .insert({
+          list_id: listId,
+          member_id: memberId,
+          change_count: 1,
+          last_actor_name: authorName,
+        })
+        .select()
+        .maybeSingle();
+      row = inserted as ChangeBatchRow;
+    }
+    if (!row) continue;
+
+    // flush anticipado: umbral de cambios acumulados
+    const flushByCount = row.change_count >= NOTIFY_BATCH_THRESHOLD;
+    const flushByWindow =
+      Date.now() - new Date(row.first_change_at).getTime() >= NOTIFY_WINDOW_MS;
+
+    if (flushByCount || flushByWindow) {
+      const count = row.change_count;
+      const name = row.last_actor_name || authorName;
+      const message = `${name} hizo ${count} cambio${count === 1 ? "" : "s"} en ${listName}.`;
+      await notifyUserListShared(memberId, message, `/lista/${listId}`);
+      await svc.from("list_change_batches").delete().eq("id", row.id);
+    }
+  }
+}
+
+/**
+ * Cierra la ventana de consolidación de una lista (flush tardío de un único
+ * cambio suelto que no llegó al umbral). Se invoca desde el cliente con un
+ * setTimeout de la misma ventana que define notifyListChanged.
+ */
+export async function flushListNotifications(listId: string): Promise<void> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  if (typeof listId !== "string" || !listId) return;
+
+  const svc = getServiceClient();
+  const { data: listRow } = await svc
+    .from("lists")
+    .select("id, name")
+    .eq("id", listId)
+    .single();
+  if (!listRow) return;
+  const listName = (listRow.name as string) || "la lista";
+
+  const { data: rows } = await svc
+    .from("list_change_batches")
+    .select("id, member_id, change_count, last_actor_name")
+    .eq("list_id", listId);
+
+  for (const row of (rows ?? []) as {
+    id: string;
+    member_id: string;
+    change_count: number;
+    last_actor_name: string | null;
+  }[]) {
+    const count = row.change_count;
+    const name = row.last_actor_name || "Alguien";
+    const message = `${name} hizo ${count} cambio${count === 1 ? "" : "s"} en ${listName}.`;
+    await notifyUserListShared(row.member_id as string, message, `/lista/${listId}`);
+    await svc.from("list_change_batches").delete().eq("id", row.id);
+  }
 }

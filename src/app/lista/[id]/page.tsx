@@ -1,8 +1,10 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useListStore } from "@/lib/stores/listStore";
+import { usePreferences } from "@/lib/stores/preferencesStore";
+import { haptic } from "@/lib/haptics";
 import type { NewItemInput } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
 import ListItemRow from "@/components/ListItemRow";
@@ -10,7 +12,9 @@ import ThemeToggle from "@/components/ThemeToggle";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
 import AddMemberForm from "@/components/AddMemberForm";
 import AuthGateCta from "@/components/AuthGateCta";
+import VoiceDictationButton from "@/components/VoiceDictationButton";
 import { useAuth } from "@/lib/supabase/auth";
+import { getSharedMemberEmails } from "@/app/supabase-actions";
 
 export default function ListDetailPage({
   params,
@@ -22,6 +26,10 @@ export default function ListDetailPage({
   const hydrated = useHydrated();
   const { user, status } = useAuth();
   const isSignedIn = status === "signedIn";
+  const focusMode = usePreferences((s) => s.focusMode);
+  const setFocusMode = usePreferences((s) => s.setFocusMode);
+  const hideCompleted = usePreferences((s) => s.hideCompleted);
+  const setHideCompleted = usePreferences((s) => s.setHideCompleted);
 
   const isOwner = !!user && !!list && list.ownerId === user.id;
 
@@ -30,6 +38,27 @@ export default function ListDetailPage({
   const [quantity, setQuantity] = useState(1);
   const [unit, setUnit] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  const listId = list?.id;
+
+  useEffect(() => {
+    if (!isSignedIn || !isOwner || !listId) return;
+    let cancelled = false;
+    getSharedMemberEmails()
+      .then((shared) => {
+        if (cancelled) return;
+        const members = shared
+          .filter((s) => s.listId === listId)
+          .map((s) => ({ userId: s.userId, email: s.email }));
+        useListStore.getState().setListSharedMembers(listId, members);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn, isOwner, listId]);
 
   const hasList = list !== undefined;
 
@@ -45,6 +74,7 @@ export default function ListDetailPage({
     if (!name.trim() || !list) return;
     const input: NewItemInput = { name, description, quantity, unit };
     useListStore.getState().addItem(list.id, input);
+    if (focusMode) haptic();
     resetForm();
   }
 
@@ -83,25 +113,92 @@ export default function ListDetailPage({
   }
 
   const completed = list.items.filter((i) => i.completed).length;
+  const visibleItems = hideCompleted
+    ? list.items.filter((i) => !i.completed)
+    : list.items;
 
   return (
     <div className="mx-auto w-full max-w-lg flex-1 p-6">
-      <Link
-        href="/"
-        className="mb-4 inline-block text-sm font-medium text-primary hover:underline"
-      >
-        ← Volver
-      </Link>
-
       <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-primary">{list.name}</h1>
-          <p className="text-sm text-text-secondary">
-            {list.items.length} elemento{list.items.length === 1 ? "" : "s"} ·{" "}
-            {completed} completado{completed === 1 ? "" : "s"}
-          </p>
+        <div className="flex items-start gap-1">
+          <Link
+            href="/"
+            aria-label="Volver al inicio"
+            className="mt-1 rounded-lg p-0.5 text-primary transition-colors hover:opacity-80"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="h-6 w-6"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </Link>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-2xl font-bold text-primary">{list.name}</h1>
+              {isOwner && list.sharedMembers && list.sharedMembers.length > 0 && (
+                <span
+                  tabIndex={0}
+                  aria-label={`Compartida con: ${list.sharedMembers
+                    .map((m) => m.email)
+                    .join(", ")}`}
+                  className="group relative inline-flex focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
+                >
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-5 w-5 text-text-secondary"
+                    aria-hidden="true"
+                  >
+                    <path d="M13 4.5a2.5 2.5 0 1 1 .7 1.77L8.99 9.22a2.5 2.5 0 0 1 0 1.56l4.71 2.95a2.5 2.5 0 1 1-.7 1.77l-4.71-2.95a2.5 2.5 0 1 1-3.58-2.92L6.1 10l-1.39 1.37a2.5 2.5 0 1 1 3.58 2.92l4.71 2.95a2.5 2.5 0 1 1 3.5 3.26V14.5c0-.65.25-1.24.66-1.68l-5.06-3.16L15.66 6.5H16v4.12a2.5 2.5 0 0 1 2 2.38V14a2.5 2.5 0 1 1-4 0v-.62a2.5 2.5 0 0 1 .66-1.68l-5.06-3.16Z" />
+                  </svg>
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none invisible absolute left-0 top-full z-20 mt-1 whitespace-nowrap rounded-lg border border-zinc-200 bg-surface px-2 py-1 text-xs text-foreground opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100 dark:border-zinc-700"
+                  >
+                    Compartida con:{" "}
+                    {list.sharedMembers.map((m) => m.email).join(", ")}
+                  </span>
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-text-secondary">
+              {list.items.length} elemento{list.items.length === 1 ? "" : "s"} ·{" "}
+              {completed} completado{completed === 1 ? "" : "s"}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setFocusMode(!focusMode)}
+            aria-pressed={focusMode}
+            title={focusMode ? "Salir del modo foco" : "Modo foco (una sola mano)"}
+            className={`rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+              focusMode ? "text-primary" : "text-text-secondary"
+            }`}
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M6 2.75A.75.75 0 0 1 6.75 2h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75ZM9.25 4.5a.75.75 0 0 1 .75.75v9.5a.75.75 0 0 1-1.5 0v-9.5a.75.75 0 0 1 .75-.75Zm2.5-2.5a.75.75 0 0 0 0 1.5v.75h.5a.75.75 0 0 1 0 1.5h-.5v1.75a.75.75 0 0 1-1.5 0V5.5h-.5a.75.75 0 0 1 0-1.5h.5v-.75a.75.75 0 0 1 1.5 0Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
           {isSignedIn && (
             <ListOptionsMenu
               onSort={() => useListStore.getState().sortItems(list.id)}
@@ -109,29 +206,78 @@ export default function ListDetailPage({
                 useListStore.getState().deleteCompletedItems(list.id)
               }
               hasCompleted={hasCompleted}
+              hideCompleted={hideCompleted}
+              onToggleHideCompleted={() => setHideCompleted(!hideCompleted)}
+              onShare={() => setShareOpen((v) => !v)}
+              canShare={isOwner}
             />
           )}
           <ThemeToggle />
         </div>
       </header>
 
+      {shareOpen && isOwner && isSignedIn && (
+        <div className="mb-4">
+          <AddMemberForm listId={list.id} onClose={() => setShareOpen(false)} />
+        </div>
+      )}
+
       {isSignedIn ? (
-        <form
-          onSubmit={handleAdd}
-          className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700"
-          aria-label="Añadir elemento"
-        >
+        focusMode ? (
+          <form
+            onSubmit={handleAdd}
+            className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-4 dark:border-zinc-700"
+            aria-label="Añadir elemento"
+          >
+            <label htmlFor="item-name-focus" className="sr-only">
+              Nombre del elemento
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="item-name-focus"
+                type="text"
+                placeholder="Agregar elemento..."
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-surface px-4 py-3 text-lg text-foreground placeholder:text-placeholder dark:border-zinc-700"
+              />
+              <VoiceDictationButton
+                onInterim={setName}
+                onFinal={setName}
+                onError={(msg) => setVoiceError(msg)}
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded-lg bg-primary px-4 py-3 text-lg text-white hover:opacity-90"
+            >
+              Agregar
+            </button>
+          </form>
+        ) : (
+          <form
+            onSubmit={handleAdd}
+            className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700"
+            aria-label="Añadir elemento"
+          >
         <label htmlFor="item-name" className="sr-only">
           Nombre del elemento
         </label>
-        <input
-          id="item-name"
-          type="text"
-          placeholder="Elemento..."
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            id="item-name"
+            type="text"
+            placeholder="Elemento..."
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
+          />
+          <VoiceDictationButton
+            onInterim={setName}
+            onFinal={setName}
+            onError={(msg) => setVoiceError(msg)}
+          />
+        </div>
         <label htmlFor="item-desc" className="sr-only">
           Descripción (opcional)
         </label>
@@ -174,20 +320,32 @@ export default function ListDetailPage({
           >
             Añadir
           </button>
-        </form>
+          </form>
+        )
       ) : (
         <div className="mb-6">
           <AuthGateCta />
         </div>
       )}
 
-      {list.items.length === 0 ? (
+      {voiceError && (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+        >
+          {voiceError}
+        </p>
+      )}
+
+      {visibleItems.length === 0 ? (
         <p className="text-sm text-text-secondary">
-          Esta lista está vacía. Añade el primer elemento.
+          {list.items.length === 0
+            ? "Esta lista está vacía. Añade el primer elemento."
+            : "No hay elementos pendientes."}
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {list.items.map((item) => (
+          {visibleItems.map((item) => (
             <ListItemRow
               key={item.id}
               listId={list.id}
@@ -197,15 +355,10 @@ export default function ListDetailPage({
               onCancelEdit={() => setEditingId(null)}
               onSave={handleSaveEdit}
               isReadOnly={!isSignedIn}
+              focusMode={focusMode}
             />
           ))}
         </ul>
-      )}
-
-      {isOwner && isSignedIn && (
-        <div className="mt-8">
-          <AddMemberForm listId={list.id} />
-        </div>
       )}
     </div>
   );

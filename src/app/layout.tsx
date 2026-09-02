@@ -4,6 +4,8 @@ import { SerwistProvider } from "@serwist/turbopack/react";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider } from "@/lib/supabase/auth";
 import { SyncProvider } from "@/lib/sync/SyncProvider";
+import ScreenKeepAwake from "@/components/ScreenKeepAwake";
+import PushNotificationManager from "@/components/PushNotificationManager";
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css";
 
@@ -81,6 +83,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <AuthProvider>
             <SyncProvider />
+            <ScreenKeepAwake />
+            <PushNotificationManager />
             <SerwistProvider swUrl="/serwist/sw.js">
               <>
                 {children}
