@@ -26,6 +26,8 @@ export default function ListDetailPage({
   const isSignedIn = status === "signedIn";
   const focusMode = usePreferences((s) => s.focusMode);
   const setFocusMode = usePreferences((s) => s.setFocusMode);
+  const hideCompleted = usePreferences((s) => s.hideCompleted);
+  const setHideCompleted = usePreferences((s) => s.setHideCompleted);
 
   const isOwner = !!user && !!list && list.ownerId === user.id;
 
@@ -88,6 +90,9 @@ export default function ListDetailPage({
   }
 
   const completed = list.items.filter((i) => i.completed).length;
+  const visibleItems = hideCompleted
+    ? list.items.filter((i) => !i.completed)
+    : list.items;
 
   return (
     <div className="mx-auto w-full max-w-lg flex-1 p-6">
@@ -107,6 +112,32 @@ export default function ListDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setHideCompleted(!hideCompleted)}
+            aria-pressed={hideCompleted}
+            title={
+              hideCompleted
+                ? "Mostrar elementos tachados"
+                : "Ocultar elementos tachados"
+            }
+            className={`rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+              hideCompleted ? "text-primary" : "text-text-secondary"
+            }`}
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 3c-4.39 0-7.36 5.34-7.36 5.34S1.34 10 2.64 11.66 6.61 17 10 17s7.36-5.34 7.36-5.34A14.7 14.7 0 0 0 17.36 8.5C17.36 3.16 14.39 3 10 3Zm0 2a.75.75 0 0 0-.75.75v2.5a.75.75 0 0 0 1.5 0v-2.5A.75.75 0 0 0 10 5Zm-5.3.3a.75.75 0 0 0-1.06 1.06l1.94 1.94a.75.75 0 1 0 1.06-1.06L4.7 5.3Zm10.6 0a.75.75 0 0 1 1.06 1.06l-1.94 1.94a.75.75 0 1 1-1.06-1.06l1.94-1.94Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={() => setFocusMode(!focusMode)}
@@ -234,13 +265,15 @@ export default function ListDetailPage({
         </div>
       )}
 
-      {list.items.length === 0 ? (
+      {visibleItems.length === 0 ? (
         <p className="text-sm text-text-secondary">
-          Esta lista está vacía. Añade el primer elemento.
+          {list.items.length === 0
+            ? "Esta lista está vacía. Añade el primer elemento."
+            : "No hay elementos pendientes."}
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {list.items.map((item) => (
+          {visibleItems.map((item) => (
             <ListItemRow
               key={item.id}
               listId={list.id}
