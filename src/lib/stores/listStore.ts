@@ -10,6 +10,31 @@ import {
   upsertList,
   type ItemsMutation,
 } from "../sync/service";
+import {
+  notifyListChanged,
+  flushListNotifications,
+} from "@/app/supabase-actions";
+
+// Consolidación de notificaciones de listas compartidas: el servidor acumula
+// el contador por (lista, miembro) y flushea al llegar a N cambios o a la
+// ventana. Este timeout cierra el flush de un único cambio suelto.
+const NOTIFICATION_FLUSH_MS = 45_000;
+const flushTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function reportListChange(listId: string) {
+  // incrementar contador en el servidor (fire-and-forget; nunca rompe el flujo)
+  notifyListChanged(listId).catch(() => {});
+  // flush tardío por si queda un único cambio sin alcanzar el umbral
+  const existing = flushTimers.get(listId);
+  if (existing) clearTimeout(existing);
+  flushTimers.set(
+    listId,
+    setTimeout(() => {
+      flushTimers.delete(listId);
+      flushListNotifications(listId).catch(() => {});
+    }, NOTIFICATION_FLUSH_MS)
+  );
+}
 
 export type NewItemInput = {
   name: string;
@@ -272,6 +297,7 @@ export const useListStore = create<ListState>()(
       },
 
       renameList: (id, name) => {
+        reportListChange(id);
         const trimmed = name.trim();
         if (!trimmed) return;
         let renamed: List | null = null;
@@ -371,6 +397,7 @@ export const useListStore = create<ListState>()(
       },
 
       addItem: (listId, input) => {
+        reportListChange(listId);
         let newItem: ListItem | null = null;
         set((state) => ({
           lists: mapList(state.lists, listId, (list) => {
@@ -388,6 +415,7 @@ export const useListStore = create<ListState>()(
       },
 
       updateItem: (listId, itemId, input) => {
+        reportListChange(listId);
         let updated: ListItem | null = null;
         set((state) => ({
           lists: mapList(state.lists, listId, (list) => ({
@@ -415,6 +443,7 @@ export const useListStore = create<ListState>()(
       },
 
       toggleItem: (listId, itemId) => {
+        reportListChange(listId);
         let updated: ListItem | null = null;
         set((state) => ({
           lists: mapList(state.lists, listId, (list) => ({
@@ -432,6 +461,7 @@ export const useListStore = create<ListState>()(
       },
 
       deleteItem: (listId, itemId) => {
+        reportListChange(listId);
         set((state) => ({
           lists: mapList(state.lists, listId, (list) => ({
             ...bumpList(list),
@@ -442,6 +472,7 @@ export const useListStore = create<ListState>()(
       },
 
       sortItems: (listId) => {
+        reportListChange(listId);
         let sortedItems: ListItem[] = [];
         set((state) => ({
           lists: mapList(state.lists, listId, (list) => {
@@ -468,6 +499,7 @@ export const useListStore = create<ListState>()(
       },
 
       deleteCompletedItems: (listId) => {
+        reportListChange(listId);
         const removed: ListItem[] = [];
         set((state) => ({
           lists: mapList(state.lists, listId, (list) => {

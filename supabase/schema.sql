@@ -186,6 +186,25 @@ create policy "push_subscriptions_update_own" on public.push_subscriptions
 create policy "push_subscriptions_delete_own" on public.push_subscriptions
   for delete using (user_id = auth.uid());
 
+-- list_change_batches: consolidación server-side de notificaciones de cambios
+-- en listas compartidas. Solo la toca el service role (server actions); RLS
+-- habilitada sin policies para el cliente (no debe leerla ni escribirla).
+create table if not exists public.list_change_batches (
+  id uuid primary key default gen_random_uuid(),
+  list_id uuid not null references public.lists(id) on delete cascade,
+  member_id uuid not null references auth.users(id) on delete cascade,
+  change_count integer not null default 0,
+  first_change_at timestamptz not null default now(),
+  last_change_at timestamptz not null default now(),
+  last_actor_name text,
+  unique (list_id, member_id)
+);
+
+alter table public.list_change_batches enable row level security;
+
+create index if not exists list_change_batches_list_idx
+  on public.list_change_batches (list_id);
+
 -- Realtime: publicar solo cambios de list_items (D5).
 alter publication supabase_realtime add table public.list_items;
 
