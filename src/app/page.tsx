@@ -22,6 +22,7 @@ import AuthGateCta from "@/components/AuthGateCta";
 import InstallPrompt from "@/components/InstallPrompt";
 import ThemeToggle from "@/components/ThemeToggle";
 import UserMenu from "@/components/UserMenu";
+import VoiceDictationButton from "@/components/VoiceDictationButton";
 
 export default function Home() {
   const lists = useListStore((s) => s.lists);
@@ -36,6 +37,7 @@ export default function Home() {
   const sharedLists = lists.filter((l) => l.role === "editor").sort(byPosition);
 
   const [newName, setNewName] = useState("");
+const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -91,6 +93,11 @@ export default function Home() {
             onChange={(e) => setNewName(e.target.value)}
             className="flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
           />
+          <VoiceDictationButton
+            onInterim={setNewName}
+            onFinal={setNewName}
+            onError={(msg) => setVoiceError(msg)}
+          />
           <button
             type="submit"
             className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90"
@@ -102,6 +109,15 @@ export default function Home() {
         <div className="mb-6">
           <AuthGateCta />
         </div>
+      )}
+
+      {voiceError && (
+        <p
+          role="alert"
+          className="mb-6 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+        >
+          {voiceError}
+        </p>
       )}
 
       {hydrated && (

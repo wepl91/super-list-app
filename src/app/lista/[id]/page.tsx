@@ -12,6 +12,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
 import AddMemberForm from "@/components/AddMemberForm";
 import AuthGateCta from "@/components/AuthGateCta";
+import VoiceDictationButton from "@/components/VoiceDictationButton";
 import { useAuth } from "@/lib/supabase/auth";
 
 export default function ListDetailPage({
@@ -37,6 +38,7 @@ export default function ListDetailPage({
   const [unit, setUnit] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const hasList = list !== undefined;
 
@@ -192,14 +194,21 @@ export default function ListDetailPage({
             <label htmlFor="item-name-focus" className="sr-only">
               Nombre del elemento
             </label>
-            <input
-              id="item-name-focus"
-              type="text"
-              placeholder="Agregar elemento..."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="rounded-lg border border-zinc-300 bg-surface px-4 py-3 text-lg text-foreground placeholder:text-placeholder dark:border-zinc-700"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                id="item-name-focus"
+                type="text"
+                placeholder="Agregar elemento..."
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-surface px-4 py-3 text-lg text-foreground placeholder:text-placeholder dark:border-zinc-700"
+              />
+              <VoiceDictationButton
+                onInterim={setName}
+                onFinal={setName}
+                onError={(msg) => setVoiceError(msg)}
+              />
+            </div>
             <button
               type="submit"
               className="rounded-lg bg-primary px-4 py-3 text-lg text-white hover:opacity-90"
@@ -216,14 +225,21 @@ export default function ListDetailPage({
         <label htmlFor="item-name" className="sr-only">
           Nombre del elemento
         </label>
-        <input
-          id="item-name"
-          type="text"
-          placeholder="Elemento..."
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            id="item-name"
+            type="text"
+            placeholder="Elemento..."
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
+          />
+          <VoiceDictationButton
+            onInterim={setName}
+            onFinal={setName}
+            onError={(msg) => setVoiceError(msg)}
+          />
+        </div>
         <label htmlFor="item-desc" className="sr-only">
           Descripción (opcional)
         </label>
@@ -272,6 +288,15 @@ export default function ListDetailPage({
         <div className="mb-6">
           <AuthGateCta />
         </div>
+      )}
+
+      {voiceError && (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+        >
+          {voiceError}
+        </p>
       )}
 
       {visibleItems.length === 0 ? (
