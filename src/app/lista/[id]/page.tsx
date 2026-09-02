@@ -8,8 +8,8 @@ import { haptic } from "@/lib/haptics";
 import type { NewItemInput } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
 import ListItemRow from "@/components/ListItemRow";
-import ThemeToggle from "@/components/ThemeToggle";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import AddMemberForm from "@/components/AddMemberForm";
 import AuthGateCta from "@/components/AuthGateCta";
 import VoiceDictationButton from "@/components/VoiceDictationButton";
@@ -40,6 +40,7 @@ export default function ListDetailPage({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [sharedInfoOpen, setSharedInfoOpen] = useState(false);
 
   const listId = list?.id;
 
@@ -145,35 +146,24 @@ export default function ListDetailPage({
             <div className="flex items-center gap-1.5">
               <h1 className="text-2xl font-bold text-primary">{list.name}</h1>
               {isOwner && list.sharedMembers && list.sharedMembers.length > 0 && (
-                <span
-                  tabIndex={0}
-                  aria-label={`Compartida con: ${list.sharedMembers
-                    .map((m) => m.email)
-                    .join(", ")}`}
-                  className="group relative inline-flex focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
+                <button
+                  type="button"
+                  onClick={() => setSharedInfoOpen(true)}
+                  aria-label="Ver quiénes comparten esta lista"
+                  title="Ver quiénes comparten esta lista"
+                  className="-m-1 rounded-md p-1 text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
                   <svg
                     viewBox="0 0 20 20"
                     fill="currentColor"
-                    className="h-5 w-5 text-text-secondary"
+                    className="h-4 w-4"
                     aria-hidden="true"
                   >
                     <path d="M13 4.5a2.5 2.5 0 1 1 .7 1.77L8.99 9.22a2.5 2.5 0 0 1 0 1.56l4.71 2.95a2.5 2.5 0 1 1-.7 1.77l-4.71-2.95a2.5 2.5 0 1 1-3.58-2.92L6.1 10l-1.39 1.37a2.5 2.5 0 1 1 3.58 2.92l4.71 2.95a2.5 2.5 0 1 1 3.5 3.26V14.5c0-.65.25-1.24.66-1.68l-5.06-3.16L15.66 6.5H16v4.12a2.5 2.5 0 0 1 2 2.38V14a2.5 2.5 0 1 1-4 0v-.62a2.5 2.5 0 0 1 .66-1.68l-5.06-3.16Z" />
                   </svg>
-                  <span
-                    role="tooltip"
-                    className="pointer-events-none invisible absolute left-0 top-full z-20 mt-1 whitespace-nowrap rounded-lg border border-zinc-200 bg-surface px-2 py-1 text-xs text-foreground opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100 dark:border-zinc-700"
-                  >
-                    Compartida con:{" "}
-                    {list.sharedMembers.map((m) => m.email).join(", ")}
-                  </span>
-                </span>
+                </button>
               )}
             </div>
-            <p className="text-sm text-text-secondary">
-              {list.items.length} elemento{list.items.length === 1 ? "" : "s"} ·{" "}
-              {completed} completado{completed === 1 ? "" : "s"}
-            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -212,7 +202,6 @@ export default function ListDetailPage({
               canShare={isOwner}
             />
           )}
-          <ThemeToggle />
         </div>
       </header>
 
@@ -328,6 +317,13 @@ export default function ListDetailPage({
         </div>
       )}
 
+      {list.items.length > 0 && (
+        <p className="mb-4 text-sm text-text-secondary">
+          {list.items.length} elemento{list.items.length === 1 ? "" : "s"} ·{" "}
+          {completed} completado{completed === 1 ? "" : "s"}
+        </p>
+      )}
+
       {voiceError && (
         <p
           role="alert"
@@ -360,6 +356,22 @@ export default function ListDetailPage({
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={sharedInfoOpen}
+        variant="info"
+        title="Compartido"
+        message={
+          <ul className="space-y-1">
+            {list.sharedMembers?.map((m) => (
+              <li key={m.userId}>{m.email}</li>
+            ))}
+          </ul>
+        }
+        confirmLabel="Listo"
+        onConfirm={() => setSharedInfoOpen(false)}
+        onCancel={() => setSharedInfoOpen(false)}
+      />
     </div>
   );
 }
