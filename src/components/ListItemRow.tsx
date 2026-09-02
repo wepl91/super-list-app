@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useListStore } from "@/lib/stores/listStore";
+import { haptic } from "@/lib/haptics";
 import type { ListItem } from "@/lib/types";
 
 interface ListItemRowProps {
@@ -18,6 +19,8 @@ interface ListItemRowProps {
   }) => void;
   /** Modo solo lectura (sin sesión): deshabilita completar/editar/eliminar. */
   isReadOnly?: boolean;
+  /** Modo foco: fila completa clickeable, controles más grandes, háptica. */
+  focusMode?: boolean;
 }
 
 function quantityLabel(item: ListItem): string {
@@ -33,6 +36,7 @@ export default function ListItemRow({
   onCancelEdit,
   onSave,
   isReadOnly = false,
+  focusMode = false,
 }: ListItemRowProps) {
   const toggleItem = useListStore((s) => s.toggleItem);
   const deleteItem = useListStore((s) => s.deleteItem);
@@ -46,6 +50,12 @@ export default function ListItemRow({
     e.preventDefault();
     if (!name.trim()) return;
     onSave({ name, description, quantity, unit });
+  }
+
+  function handleToggle() {
+    if (isReadOnly) return;
+    if (focusMode) haptic();
+    toggleItem(listId, item.id);
   }
 
   if (editing) {
@@ -119,35 +129,48 @@ export default function ListItemRow({
   }
 
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700">
-      <input
-        type="checkbox"
-        checked={item.completed}
-        onChange={() => {
-          if (!isReadOnly) toggleItem(listId, item.id);
-        }}
-        disabled={isReadOnly}
-        aria-label={`Completar ${item.name}`}
-        className="h-4 w-4 shrink-0 accent-primary disabled:opacity-50"
-      />
-      <div className="min-w-0 flex-1">
-        <p
-          className={`truncate text-sm ${
-            item.completed ? "text-text-secondary line-through" : ""
+    <li
+      className={`flex items-center gap-3 rounded-xl border border-zinc-200 bg-surface dark:border-zinc-700 ${
+        focusMode ? "p-4 focus-within:ring-2 focus-within:ring-primary" : "p-3"
+      }`}
+    >
+      <label
+        className={`flex min-w-0 flex-1 cursor-pointer items-center gap-3 ${
+          isReadOnly || focusMode ? "" : "w-auto"
+        }`}
+      >
+        <span className="sr-only">Completar {item.name}</span>
+        <input
+          type="checkbox"
+          checked={item.completed}
+          onChange={handleToggle}
+          disabled={isReadOnly}
+          aria-label={`Completar ${item.name}`}
+          className={`shrink-0 accent-primary disabled:opacity-50 ${
+            focusMode ? "h-8 w-8" : "h-4 w-4"
           }`}
+        />
+        <span
+          className={`min-w-0 flex-1 ${
+            item.completed ? "text-text-secondary line-through" : ""
+          } ${focusMode ? "text-lg font-medium" : "text-sm"}`}
         >
           {item.name}
+        </span>
+      </label>
+      {!focusMode && item.description && (
+        <p className="min-w-0 truncate text-xs text-text-secondary">
+          {item.description}
         </p>
-        {item.description && (
-          <p className="truncate text-xs text-text-secondary">
-            {item.description}
-          </p>
-        )}
-      </div>
-      <span className="shrink-0 text-xs font-medium text-text-secondary">
+      )}
+      <span
+        className={`shrink-0 font-medium text-text-secondary ${
+          focusMode ? "text-lg" : "text-xs"
+        }`}
+      >
         {quantityLabel(item)}
       </span>
-      <div className="flex shrink-0 gap-1">
+      <div className={`flex shrink-0 gap-1 ${focusMode ? "gap-2" : ""}`}>
         {!isReadOnly && (
           <>
             <button
@@ -155,12 +178,14 @@ export default function ListItemRow({
               onClick={onEdit}
               aria-label={`Editar ${item.name}`}
               title="Editar"
-              className="rounded-lg p-2 text-text-secondary hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
+              className={`rounded-lg text-text-secondary hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800 ${
+                focusMode ? "p-3" : "p-2"
+              }`}
             >
               <svg
                 viewBox="0 0 20 20"
                 fill="currentColor"
-                className="h-4 w-4"
+                className={focusMode ? "h-6 w-6" : "h-4 w-4"}
                 aria-hidden="true"
               >
                 <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
@@ -172,12 +197,14 @@ export default function ListItemRow({
               onClick={() => deleteItem(listId, item.id)}
               aria-label={`Eliminar ${item.name}`}
               title="Eliminar"
-              className="rounded-lg p-2 text-text-secondary hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+              className={`rounded-lg text-text-secondary hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400 ${
+                focusMode ? "p-3" : "p-2"
+              }`}
             >
               <svg
                 viewBox="0 0 20 20"
                 fill="currentColor"
-                className="h-4 w-4"
+                className={focusMode ? "h-6 w-6" : "h-4 w-4"}
                 aria-hidden="true"
               >
                 <path

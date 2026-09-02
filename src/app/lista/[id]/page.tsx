@@ -3,6 +3,8 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { useListStore } from "@/lib/stores/listStore";
+import { usePreferences } from "@/lib/stores/preferencesStore";
+import { haptic } from "@/lib/haptics";
 import type { NewItemInput } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
 import ListItemRow from "@/components/ListItemRow";
@@ -22,6 +24,8 @@ export default function ListDetailPage({
   const hydrated = useHydrated();
   const { user, status } = useAuth();
   const isSignedIn = status === "signedIn";
+  const focusMode = usePreferences((s) => s.focusMode);
+  const setFocusMode = usePreferences((s) => s.setFocusMode);
 
   const isOwner = !!user && !!list && list.ownerId === user.id;
 
@@ -45,6 +49,7 @@ export default function ListDetailPage({
     if (!name.trim() || !list) return;
     const input: NewItemInput = { name, description, quantity, unit };
     useListStore.getState().addItem(list.id, input);
+    if (focusMode) haptic();
     resetForm();
   }
 
@@ -102,6 +107,28 @@ export default function ListDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setFocusMode(!focusMode)}
+            aria-pressed={focusMode}
+            title={focusMode ? "Salir del modo foco" : "Modo foco (una sola mano)"}
+            className={`rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+              focusMode ? "text-primary" : "text-text-secondary"
+            }`}
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M6 2.75A.75.75 0 0 1 6.75 2h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75ZM9.25 4.5a.75.75 0 0 1 .75.75v9.5a.75.75 0 0 1-1.5 0v-9.5a.75.75 0 0 1 .75-.75Zm2.5-2.5a.75.75 0 0 0 0 1.5v.75h.5a.75.75 0 0 1 0 1.5h-.5v1.75a.75.75 0 0 1-1.5 0V5.5h-.5a.75.75 0 0 1 0-1.5h.5v-.75a.75.75 0 0 1 1.5 0Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
           {isSignedIn && (
             <ListOptionsMenu
               onSort={() => useListStore.getState().sortItems(list.id)}
@@ -116,11 +143,36 @@ export default function ListDetailPage({
       </header>
 
       {isSignedIn ? (
-        <form
-          onSubmit={handleAdd}
-          className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700"
-          aria-label="Añadir elemento"
-        >
+        focusMode ? (
+          <form
+            onSubmit={handleAdd}
+            className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-4 dark:border-zinc-700"
+            aria-label="Añadir elemento"
+          >
+            <label htmlFor="item-name-focus" className="sr-only">
+              Nombre del elemento
+            </label>
+            <input
+              id="item-name-focus"
+              type="text"
+              placeholder="Agregar elemento..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="rounded-lg border border-zinc-300 bg-surface px-4 py-3 text-lg text-foreground placeholder:text-placeholder dark:border-zinc-700"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-primary px-4 py-3 text-lg text-white hover:opacity-90"
+            >
+              Agregar
+            </button>
+          </form>
+        ) : (
+          <form
+            onSubmit={handleAdd}
+            className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700"
+            aria-label="Añadir elemento"
+          >
         <label htmlFor="item-name" className="sr-only">
           Nombre del elemento
         </label>
@@ -174,7 +226,8 @@ export default function ListDetailPage({
           >
             Añadir
           </button>
-        </form>
+          </form>
+        )
       ) : (
         <div className="mb-6">
           <AuthGateCta />
@@ -197,6 +250,7 @@ export default function ListDetailPage({
               onCancelEdit={() => setEditingId(null)}
               onSave={handleSaveEdit}
               isReadOnly={!isSignedIn}
+              focusMode={focusMode}
             />
           ))}
         </ul>
