@@ -138,10 +138,9 @@ export default function ListItemRow({
     >
       <label
         className={`flex min-w-0 flex-1 cursor-pointer items-center gap-3 ${
-          isReadOnly || focusMode ? "" : "w-auto"
+          isReadOnly ? "cursor-not-allowed" : ""
         }`}
       >
-        <span className="sr-only">Completar {item.name}</span>
         <input
           type="checkbox"
           checked={item.completed}
@@ -152,26 +151,21 @@ export default function ListItemRow({
             focusMode ? "h-8 w-8" : "h-4 w-4"
           }`}
         />
-        <span
-          className={`min-w-0 flex-1 ${
-            item.completed ? "text-text-secondary line-through" : ""
-          } ${focusMode ? "text-lg font-medium" : "text-sm"}`}
-        >
-          {item.name}
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block min-w-0 ${
+              item.completed ? "text-text-secondary line-through" : ""
+            } ${focusMode ? "text-lg font-medium" : "text-sm"}`}
+          >
+            {item.name} <span className="font-medium text-text-secondary">({quantityLabel(item)})</span>
+          </span>
+          {item.description && (
+            <p className="line-clamp-2 text-xs text-text-secondary">
+              {item.description}
+            </p>
+          )}
         </span>
       </label>
-      {!focusMode && item.description && (
-        <p className="min-w-0 truncate text-xs text-text-secondary">
-          {item.description}
-        </p>
-      )}
-      <span
-        className={`shrink-0 font-medium text-text-secondary ${
-          focusMode ? "text-lg" : "text-xs"
-        }`}
-      >
-        {quantityLabel(item)}
-      </span>
       <div className={`flex shrink-0 gap-1 ${focusMode ? "gap-2" : ""}`}>
         {!isReadOnly && (
           <>
