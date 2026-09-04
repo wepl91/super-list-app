@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import ListCard from "@/components/ListCard";
+import LoadingState from "@/components/LoadingState";
 import PageTransition from "@/components/PageTransition";
 import { useListStore } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
@@ -140,10 +141,8 @@ export default function Home() {
         </p>
       )}
 
-      {isSignedIn && !ready ? (
-        <p className="text-sm text-text-secondary" role="status">
-          Cargando tus listas…
-        </p>
+      {status === "loading" || (isSignedIn && !ready) ? (
+        <LoadingState />
       ) : (
         hydrated && (
           <div className="flex flex-col gap-6">
