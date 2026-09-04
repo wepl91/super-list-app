@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Mic } from "lucide-react";
 
 interface SpeechRecognitionConstructor {
   new (): SpeechRecognitionInstance;
@@ -125,14 +126,7 @@ export default function VoiceDictationButton({
         listening ? "text-red-600" : "text-text-secondary"
       }`}
     >
-      <svg
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        className="h-5 w-5"
-        aria-hidden="true"
-      >
-        <path d="M6 3.75A2.75 2.75 0 0 1 8.75 1h2.5A2.75 2.75 0 0 1 14 3.75v5.5a2.75 2.75 0 0 1-2.75 2.75h-2.5A2.75 2.75 0 0 1 6 9.25v-5.5ZM16 10a.75.75 0 0 1 .75.75V11a6 6 0 0 1-5.25 5.96v1.29h2a.75.75 0 0 1 0 1.5H6.5a.75.75 0 0 1 0-1.5h2v-1.29A6 6 0 0 1 3.25 11v-.25a.75.75 0 0 1 1.5 0V11a4.5 4.5 0 0 0 9 0v-.25A.75.75 0 0 1 14.5 10H16Z" />
-      </svg>
+      <Mic className="h-5 w-5" aria-hidden />
     </button>
   );
 }

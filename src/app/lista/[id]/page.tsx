@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, Hand, ShoppingBasket, Users } from "lucide-react";
 import { useListStore } from "@/lib/stores/listStore";
 import { usePreferences } from "@/lib/stores/preferencesStore";
 import { haptic } from "@/lib/haptics";
@@ -9,9 +10,12 @@ import type { NewItemInput } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
 import ListItemRow from "@/components/ListItemRow";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
+import PageTransition from "@/components/PageTransition";
+import ProgressSummary from "@/components/ProgressSummary";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import AddMemberForm from "@/components/AddMemberForm";
 import AuthGateCta from "@/components/AuthGateCta";
+import EmptyState from "@/components/EmptyState";
 import VoiceDictationButton from "@/components/VoiceDictationButton";
 import { useAuth } from "@/lib/supabase/auth";
 import { getSharedMemberEmails } from "@/app/supabase-actions";
@@ -89,27 +93,31 @@ export default function ListDetailPage({
 
   if (!hydrated) {
     return (
-      <div className="mx-auto w-full max-w-lg flex-1 p-6">
-        <p className="text-sm text-text-secondary">
-          Cargando...
-        </p>
-      </div>
+      <PageTransition>
+        <div className="mx-auto w-full max-w-lg flex-1 p-6">
+          <p className="text-sm text-text-secondary">
+            Cargando...
+          </p>
+        </div>
+      </PageTransition>
     );
   }
 
   if (!hasList) {
     return (
-      <div className="mx-auto w-full max-w-lg flex-1 p-6">
-        <p className="text-sm text-text-secondary">
-          Lista no encontrada.
-        </p>
-        <Link
-          href="/"
-          className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
-        >
-          Volver al inicio
-        </Link>
-      </div>
+      <PageTransition>
+        <div className="mx-auto w-full max-w-lg flex-1 p-6">
+          <p className="text-sm text-text-secondary">
+            Lista no encontrada.
+          </p>
+          <Link
+            href="/"
+            className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+          >
+            Volver al inicio
+          </Link>
+        </div>
+      </PageTransition>
     );
   }
 
@@ -117,8 +125,11 @@ export default function ListDetailPage({
   const visibleItems = hideCompleted
     ? list.items.filter((i) => !i.completed)
     : list.items;
+  const pendingItems = list.items.filter((i) => !i.completed);
+  const doneItems = list.items.filter((i) => i.completed);
 
   return (
+    <PageTransition>
     <div className="mx-auto w-full max-w-lg flex-1 p-6">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div className="flex items-start gap-1">
@@ -127,20 +138,7 @@ export default function ListDetailPage({
             aria-label="Volver al inicio"
             className="mt-1 rounded-lg p-0.5 text-primary transition-colors hover:opacity-80"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-6 w-6"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
+            <ArrowLeft className="h-6 w-6" aria-hidden />
           </Link>
           <div>
             <div className="flex items-center gap-1.5">
@@ -153,14 +151,10 @@ export default function ListDetailPage({
                   title="Ver quiénes comparten esta lista"
                   className="-m-1 rounded-md p-1 text-text-secondary transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+                  <Users
                     className="h-4 w-4"
-                    aria-hidden="true"
-                  >
-                    <path d="M13 4.5a2.5 2.5 0 1 1 .7 1.77L8.99 9.22a2.5 2.5 0 0 1 0 1.56l4.71 2.95a2.5 2.5 0 1 1-.7 1.77l-4.71-2.95a2.5 2.5 0 1 1-3.58-2.92L6.1 10l-1.39 1.37a2.5 2.5 0 1 1 3.58 2.92l4.71 2.95a2.5 2.5 0 1 1 3.5 3.26V14.5c0-.65.25-1.24.66-1.68l-5.06-3.16L15.66 6.5H16v4.12a2.5 2.5 0 0 1 2 2.38V14a2.5 2.5 0 1 1-4 0v-.62a2.5 2.5 0 0 1 .66-1.68l-5.06-3.16Z" />
-                  </svg>
+                    aria-hidden
+                  />
                 </button>
               )}
             </div>
@@ -172,22 +166,11 @@ export default function ListDetailPage({
             onClick={() => setFocusMode(!focusMode)}
             aria-pressed={focusMode}
             title={focusMode ? "Salir del modo foco" : "Modo foco (una sola mano)"}
-            className={`rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+            className={`rounded-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
               focusMode ? "text-primary" : "text-text-secondary"
             }`}
           >
-            <svg
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-5 w-5"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M6 2.75A.75.75 0 0 1 6.75 2h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75ZM9.25 4.5a.75.75 0 0 1 .75.75v9.5a.75.75 0 0 1-1.5 0v-9.5a.75.75 0 0 1 .75-.75Zm2.5-2.5a.75.75 0 0 0 0 1.5v.75h.5a.75.75 0 0 1 0 1.5h-.5v1.75a.75.75 0 0 1-1.5 0V5.5h-.5a.75.75 0 0 1 0-1.5h.5v-.75a.75.75 0 0 1 1.5 0Z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <Hand className="h-5 w-5" aria-hidden />
           </button>
           {isSignedIn && (
             <ListOptionsMenu
@@ -318,10 +301,7 @@ export default function ListDetailPage({
       )}
 
       {list.items.length > 0 && (
-        <p className="mb-4 text-sm text-text-secondary">
-          {list.items.length} elemento{list.items.length === 1 ? "" : "s"} ·{" "}
-          {completed} completado{completed === 1 ? "" : "s"}
-        </p>
+        <ProgressSummary total={list.items.length} completed={completed} />
       )}
 
       {voiceError && (
@@ -334,27 +314,67 @@ export default function ListDetailPage({
       )}
 
       {visibleItems.length === 0 ? (
-        <p className="text-sm text-text-secondary">
-          {list.items.length === 0
-            ? "Esta lista está vacía. Añade el primer elemento."
-            : "No hay elementos pendientes."}
-        </p>
+        list.items.length === 0 ? (
+          <EmptyState
+            icon={
+              <ShoppingBasket className="h-6 w-6" aria-hidden />
+            }
+            title="Esta lista está vacía"
+            description="Añadí el primer elemento arriba."
+          />
+        ) : (
+          <EmptyState
+            icon={
+              <ShoppingBasket className="h-6 w-6" aria-hidden />
+            }
+            title="No hay elementos pendientes"
+            description={`${list.items.length} element${list.items.length === 1 ? "" : "s"} completado${completed === 1 ? "" : "s"}.`}
+          />
+        )
       ) : (
-        <ul className="flex flex-col gap-2">
-          {visibleItems.map((item) => (
-            <ListItemRow
-              key={item.id}
-              listId={list.id}
-              item={item}
-              editing={editingId === item.id && isSignedIn}
-              onEdit={() => setEditingId(item.id)}
-              onCancelEdit={() => setEditingId(null)}
-              onSave={handleSaveEdit}
-              isReadOnly={!isSignedIn}
-              focusMode={focusMode}
-            />
-          ))}
-        </ul>
+        <div className="flex flex-col gap-4">
+          {pendingItems.length > 0 && (
+            <section aria-label="Pendientes">
+              <ul className="flex flex-col gap-2">
+                {pendingItems.map((item) => (
+                  <ListItemRow
+                    key={item.id}
+                    listId={list.id}
+                    item={item}
+                    editing={editingId === item.id && isSignedIn}
+                    onEdit={() => setEditingId(item.id)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onSave={handleSaveEdit}
+                    isReadOnly={!isSignedIn}
+                    focusMode={focusMode}
+                  />
+                ))}
+              </ul>
+            </section>
+          )}
+          {!hideCompleted && doneItems.length > 0 && (
+            <section aria-label="Completados">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                Completados ({doneItems.length})
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {doneItems.map((item) => (
+                  <ListItemRow
+                    key={item.id}
+                    listId={list.id}
+                    item={item}
+                    editing={editingId === item.id && isSignedIn}
+                    onEdit={() => setEditingId(item.id)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onSave={handleSaveEdit}
+                    isReadOnly={!isSignedIn}
+                    focusMode={focusMode}
+                  />
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
       )}
 
       <ConfirmDialog
@@ -373,5 +393,6 @@ export default function ListDetailPage({
         onCancel={() => setSharedInfoOpen(false)}
       />
     </div>
+    </PageTransition>
   );
 }

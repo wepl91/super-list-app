@@ -18,3 +18,11 @@ Este directorio contiene las especificaciones (specs) del proyecto bajo el enfoq
 ## Specs actuales
 
 - `gestion-de-listas.md` — capacidad core de listas (draft).
+- `ux-microinteracciones-globales.md` — base global de microinteracciones (implemented).
+- `ux-home-navegacion.md` — UX del home y la navegación (implemented).
+- `ux-detalle-lista-visual.md` — UX del detalle de lista; integra `ui-elemento-lista-layout.md` (implemented).
+- `migracion-iconos-lucide.md` — reemplazo de SVGs inline por `lucide-react` (implemented).
+- `ui-elemento-lista-layout.md` — draft de layout del elemento; integrado/superseded por `ux-detalle-lista-visual.md`.
+
+> Los specs de UX/UI tienen dependencias entre sí: implementar en orden
+> `microinteracciones-globales` → `home-navegacion` / `detalle-lista-visual`.
