@@ -9,6 +9,9 @@
   --surface: #ffffff;
   --text-secondary: #437365;
   --placeholder: #8aa29a;
+  --border-light: #d4d4d8;
+  --hover-surface: #f4f4f5;
+  --destructive-hover: rgb(254 226 226 / 0.6);
 }
 
 [data-theme="dark"] {
@@ -18,6 +21,9 @@
   --surface: #182721;
   --text-secondary: #a7f3d0;
   --placeholder: #4a6359;
+  --border-light: #3f3f46;
+  --hover-surface: #27272a;
+  --destructive-hover: rgb(69 10 10 / 0.5);
 }
 
 @theme inline {
@@ -29,6 +35,118 @@
   --color-placeholder: var(--placeholder);
   --font-sans: var(--font-nunito-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* tokens de motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes row-pop {
+  0% {
+    transform: scale(0.98);
+    background-color: color-mix(in oklab, var(--primary) 14%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    background-color: transparent;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Botones base: primario, outline, ghost y destructivo */
+@utility btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition-property: color, background-color, border-color, opacity, transform;
+  transition-duration: 150ms;
+  &:active {
+    transform: scale(0.98);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 60%, transparent);
+  }
+}
+
+@utility btn-primary {
+  background-color: var(--primary);
+  color: #fff;
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+@utility btn-outline {
+  border: 1px solid var(--border-light);
+  color: var(--foreground);
+  &:hover {
+    background-color: var(--hover-surface);
+  }
+}
+
+@utility btn-ghost {
+  color: var(--text-secondary);
+  &:hover {
+    background-color: var(--hover-surface);
+    color: var(--foreground);
+  }
+}
+
+@utility btn-destructive {
+  color: #dc2626;
+  &:hover {
+    background-color: var(--destructive-hover);
+    color: #dc2626;
+  }
+}
+
+/* Motion utility */
+@utility animate-row-pop {
+  animation: row-pop 0.3s var(--ease-out-expo);
+}
+@utility animate-fade-in {
+  animation: fade-in 0.15s ease-out both;
+}
+@utility animate-slide-up {
+  animation: slide-up 0.2s var(--ease-out-expo) both;
+}
+
+/* Motion: respetar preferencia de menos movimiento (solo utilidades de motion) */
+@media (prefers-reduced-motion: reduce) {
+  .animate-row-pop,
+  .animate-fade-in,
+  .animate-slide-up,
+  .btn-base {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {

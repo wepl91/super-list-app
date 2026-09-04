@@ -58,10 +58,10 @@ interface ListState {
   mergeRemote: (remoteLists: List[]) => void;
   applyRemoteListItem: (listId: string, item: ListItem) => void;
   applyRemoteRemoveItem: (listId: string, itemId: string) => void;
-  createList: (name: string) => void;
+  createList: (name: string) => string;
   renameList: (id: string, name: string) => void;
   deleteList: (id: string) => void;
-  cloneList: (id: string) => void;
+  cloneList: (id: string) => string | undefined;
   reorderLists: (activeId: string, overId: string) => void;
   addItem: (listId: string, input: NewItemInput) => void;
   updateItem: (listId: string, itemId: string, input: Partial<NewItemInput>) => void;
@@ -294,6 +294,7 @@ export const useListStore = create<ListState>()(
         if (userId) {
           pushListToRemote(list, userId);
         }
+        return list.id;
       },
 
       renameList: (id, name) => {
@@ -328,7 +329,7 @@ export const useListStore = create<ListState>()(
 
       cloneList: (id) => {
         const source = get().lists.find((list) => list.id === id);
-        if (!source) return;
+        if (!source) return undefined;
         const userId = get().serverUserId;
         const clone: List = {
           ...structuredClone(source),
@@ -351,6 +352,7 @@ export const useListStore = create<ListState>()(
         if (userId) {
           pushListToRemote(clone, userId);
         }
+        return clone.id;
       },
 
       reorderLists: (activeId, overId) => {
