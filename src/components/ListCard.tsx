@@ -2,6 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import {
+  Check,
+  CircleCheck,
+  Clock,
+  Copy,
+  EllipsisVertical,
+  GripVertical,
+  HardDrive,
+  Pencil,
+  RefreshCw,
+  Share,
+  Trash2,
+} from "lucide-react";
 import type { List } from "@/lib/types";
 import { useListStore } from "@/lib/stores/listStore";
 import { useSortable } from "@dnd-kit/sortable";
@@ -14,12 +27,15 @@ interface ListCardProps {
   isOwner?: boolean;
   /** Modo solo lectura (sin sesión): oculta las acciones de escritura. */
   isReadOnly?: boolean;
+  /** Resaltar la card brevemente (ej. recién creada/duplicada). */
+  highlighted?: boolean;
 }
 
 export default function ListCard({
   list,
   isOwner = true,
   isReadOnly = false,
+  highlighted = false,
 }: ListCardProps) {
   const cloneList = useListStore((s) => s.cloneList);
   const deleteList = useListStore((s) => s.deleteList);
@@ -30,6 +46,7 @@ export default function ListCard({
   const [editName, setEditName] = useState(list.name);
   const [syncTipOpen, setSyncTipOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [flashSelf, setFlashSelf] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +95,10 @@ export default function ListCard({
   };
 
   const completed = list.items.filter((i) => i.completed).length;
+  const sharedMembers = list.sharedMembers;
+  const isShared = !!sharedMembers && sharedMembers.length > 0;
+  const progressPct =
+    list.items.length > 0 ? Math.round((completed / list.items.length) * 100) : 0;
 
   function handleDelete() {
     setMenuOpen(false);
@@ -116,27 +137,22 @@ export default function ListCard({
     <li
       ref={setNodeRef}
       style={style}
-      className={`rounded-xl border border-zinc-200 bg-surface shadow-sm dark:border-zinc-700 ${
-        isDragging ? "opacity-60" : ""
-      }`}
+      className={`rounded-xl border border-zinc-200 bg-surface shadow-sm transition-shadow dark:border-zinc-700 ${
+        isDragging
+          ? "z-10 scale-[1.02] opacity-90 shadow-lg ring-2 ring-primary/50"
+          : ""
+      } ${highlighted || flashSelf ? "animate-row-pop" : ""}`}
     >
       <div className="flex items-center gap-3 p-3">
         {isOwner && !isReadOnly && (
           <button
             type="button"
             aria-label={`Reordenar ${list.name}`}
-            className="cursor-grab touch-none rounded p-1 text-text-secondary hover:text-foreground active:cursor-grabbing"
+            className="cursor-grab touch-none rounded p-1 text-text-secondary hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             {...attributes}
             {...listeners}
           >
-            <svg
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-5 w-5"
-              aria-hidden="true"
-            >
-              <path d="M6 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm8 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM6 8a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm8 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM6 12a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm8 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z" />
-            </svg>
+            <GripVertical className="h-5 w-5" aria-hidden />
           </button>
         )}
 
@@ -147,35 +163,20 @@ export default function ListCard({
             aria-label={statusMeta[status].title}
             aria-haspopup="true"
             aria-expanded={syncTipOpen}
-            className={`group rounded p-0.5 ${statusMeta[status].cls}`}
+            className={`group rounded p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${statusMeta[status].cls}`}
           >
-            <svg
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-4 w-4"
-              aria-hidden="true"
-            >
-              {status === "synced" && (
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.7-8.7a.75.75 0 0 0-1.4-.6l-2.55 4.04-1.77-1.42a.75.75 0 1 0-.92 1.18l2.42 1.94a.75.75 0 0 0 1.14-.17l3.08-4.97Z"
-                  clipRule="evenodd"
-                />
+            {status === "synced" && (
+                <CircleCheck className="h-4 w-4" aria-hidden />
               )}
               {status === "dirty" && (
-                <path
-                  fillRule="evenodd"
-                  d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm.75 4.25a.75.75 0 0 0-1.5 0V10c0 .2.08.39.22.53l2 2a.75.75 0 1 0 1.06-1.06l-1.78-1.78V6.25Z"
-                  clipRule="evenodd"
-                />
+                <Clock className="h-4 w-4" aria-hidden />
               )}
               {status === "syncing" && (
-                <path d="M10 2a.75.75 0 0 1 .75.75v2a.75.75 0 0 1-1.5 0v-2A.75.75 0 0 1 10 2Zm0 12.5a.75.75 0 0 1 .75.75v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 1 .75-.75Zm7.25-4.5a.75.75 0 0 1-.75.75h-2a.75.75 0 0 1 0-1.5h2a.75.75 0 0 1 .75.75ZM4.75 8a.75.75 0 0 1-.75.75H2a.75.75 0 0 1 0-1.5h2a.75.75 0 0 1 .75.75Zm.53-3.72a.75.75 0 0 1 0 1.06l-1.414 1.414a.75.75 0 0 1-1.06-1.06L4.22 4.22a.75.75 0 0 1 1.06 0Zm9.19 9.19a.75.75 0 0 1 0 1.06l-1.414 1.414a.75.75 0 0 1-1.06-1.06l1.414-1.414a.75.75 0 0 1 1.06 0Zm1.06-9.19a.75.75 0 0 1 1.06 0l1.414 1.414a.75.75 0 1 1-1.06 1.06L15.78 4.22a.75.75 0 0 1 0-1.06Zm-1.06 1.06a.75.75 0 0 1 0 1.06L14.22 6.69a.75.75 0 0 1-1.06-1.06l1.414-1.414a.75.75 0 0 1 1.06 0Z" />
+                <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
               )}
               {status === "local" && (
-                <path d="M5.4 7.6A4 4 0 0 1 9.5 4.06a4.5 4.5 0 0 1 4.82 2.36A3.5 3.5 0 0 1 17 9.5c0 .55-.12 1.06-.35 1.52a.75.75 0 1 1-1.33-.7c.1-.19.18-.48.18-.82a2 2 0 0 0-2-2h-.3a.75.75 0 0 1-.72-.96 2.99 2.99 0 0 0-2.42-3.72A2.5 2.5 0 0 0 6.65 5.4a.75.75 0 0 1-.9.33 1.5 1.5 0 0 0-1.93 1.44c0 .36.12.69.33.96a.75.75 0 0 1-1.24.85A3 3 0 0 1 5.4 7.6Zm3.6 7.9a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75ZM2.47 13.06a.75.75 0 0 1 1.06 0l1.06 1.06 1.06-1.06a.75.75 0 1 1 1.06 1.06L5.65 15.18l1.06 1.06a.75.75 0 1 1-1.06 1.06l-1.06-1.06-1.06 1.06a.75.75 0 1 1-1.06-1.06l1.06-1.06-1.06-1.06a.75.75 0 0 1 0-1.06Z" />
+                <HardDrive className="h-4 w-4" aria-hidden />
               )}
-            </svg>
           </button>
 
           <span
@@ -203,27 +204,41 @@ export default function ListCard({
               title="Guardar"
               className="shrink-0 rounded-lg p-2 text-text-secondary hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
             >
-              <svg
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-5 w-5"
-                aria-hidden="true"
-              >
-                <path d="M3.5 2.75A1.75 1.75 0 0 1 5.25 1h6.5c.46 0 .9.18 1.23.51l2.51 2.51c.33.33.51.77.51 1.23v9.5a1.75 1.75 0 0 1-1.75 1.75h-9a1.75 1.75 0 0 1-1.75-1.75v-12ZM5.25 2.5a.25.25 0 0 0-.25.25v3a.25.25 0 0 0 .25.25h6a.25.25 0 0 0 .25-.25v-3a.25.25 0 0 0-.25-.25h-6Zm7.5 1.06v2.94a1.75 1.75 0 0 1-1.75 1.75h-4A1.75 1.75 0 0 1 5.25 6.5V3.56L4.56 4.25A.25.25 0 0 0 4.5 4.5v12a.25.25 0 0 0 .25.25h1V13.5a1 1 0 0 1 1-1h6.5a1 1 0 0 1 1 1v3.25h1a.25.25 0 0 0 .25-.25V6.87a.25.25 0 0 0-.07-.18l-2.17-2.17a.25.25 0 0 0-.18-.07h-.33Z" />
-              </svg>
+              <Check className="h-5 w-5" aria-hidden />
             </button>
           </form>
         ) : (
           <Link href={`/lista/${list.id}`} className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{list.name}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-sm font-medium">{list.name}</p>
+              {isShared && (
+                <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                  Compartida
+                </span>
+              )}
+            </div>
             <p className="text-xs text-text-secondary">
               {list.items.length} elemento{list.items.length === 1 ? "" : "s"}{" "}
               · {completed} completado{completed === 1 ? "" : "s"}
             </p>
-            {isOwner && list.sharedMembers && list.sharedMembers.length > 0 && (
+            {list.items.length > 0 && (
+              <div
+                className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={list.items.length}
+                aria-valuenow={completed}
+                aria-label={`${completed} de ${list.items.length} completados`}
+              >
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-300"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            )}
+            {isShared && (
               <p className="mt-0.5 truncate text-xs text-text-secondary">
-                Compartida con:{" "}
-                {list.sharedMembers.map((m) => m.email).join(", ")}
+                {sharedMembers.map((m) => m.email).join(", ")}
               </p>
             )}
           </Link>
@@ -237,16 +252,9 @@ export default function ListCard({
               aria-label={`Opciones de ${list.name}`}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              className="rounded-lg p-2 text-text-secondary hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
+              className="rounded-lg p-2 text-text-secondary hover:bg-zinc-100 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800"
             >
-              <svg
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-5 w-5"
-                aria-hidden="true"
-              >
-                <path d="M10 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" />
-              </svg>
+              <EllipsisVertical className="h-5 w-5" aria-hidden />
             </button>
 
             {menuOpen && (
@@ -262,16 +270,9 @@ export default function ListCard({
                     setMenuOpen(false);
                     setEditOpen(true);
                   }}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800"
                 >
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="h-4 w-4 shrink-0 text-text-secondary"
-                    aria-hidden="true"
-                  >
-                    <path d="m5.43 13.9 6.4-6.4 2.1 2.1-6.4 6.4H5.43v-2.1Zm9.07-7.67a.53.53 0 0 0-.76 0l-1.28 1.28 2.1 2.1 1.28-1.28a.53.53 0 0 0 0-.76l-1.34-1.34ZM4.26 16.22c-.07.1 0 .28.13.3l2.04.34 6.4-6.4-2.1-2.1-6.4 6.4-.07 2.06Z" />
-                  </svg>
+                  <Pencil className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
                   Renombrar
                 </button>
 
@@ -282,17 +283,9 @@ export default function ListCard({
                     setMenuOpen(false);
                     setShareOpen(true);
                   }}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800"
                 >
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="h-4 w-4 shrink-0 text-text-secondary"
-                    aria-hidden="true"
-                  >
-                    <path d="M11 5.5V3.75a.75.75 0 0 0-1.28-.53L5.09 7.85a.75.75 0 0 0 0 1.06l4.63 4.63a.75.75 0 0 0 1.28-.53V11a5.5 5.5 0 0 1 5.5 5.5v.75a.75.75 0 0 0 1.5 0v-.75A7 7 0 0 0 11 12Z" />
-                    <path d="M3.75 5A1.75 1.75 0 0 0 2 6.75v8.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 15.25v-1.042a.75.75 0 0 0-1.5 0v1.042a.25.25 0 0 1-.25.25h-8.5a.25.25 0 0 1-.25-.25v-8.5a.25.25 0 0 1 .25-.25h1.042a.75.75 0 0 0 0-1.5H3.75Z" />
-                  </svg>
+                  <Share className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
                   Compartir
                 </button>
 
@@ -302,18 +295,12 @@ export default function ListCard({
                   onClick={() => {
                     setMenuOpen(false);
                     cloneList(list.id);
+                    setFlashSelf(true);
+                    setTimeout(() => setFlashSelf(false), 700);
                   }}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800"
                 >
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="h-4 w-4 shrink-0 text-text-secondary"
-                    aria-hidden="true"
-                  >
-                    <path d="M5 2a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1v-1.5H5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v.5H13V4a2 2 0 0 0-2-2H5Z" />
-                    <path d="M8 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H8Z" />
-                  </svg>
+                  <Copy className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
                   Duplicar
                 </button>
 
@@ -323,20 +310,9 @@ export default function ListCard({
                   type="button"
                   role="menuitem"
                   onClick={handleDelete}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-red-950 dark:hover:text-red-400"
                 >
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="h-4 w-4 shrink-0 text-text-secondary"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M8.75 1A2.75 2.75 0 0 0 6 3.75V4H3a.75.75 0 0 0 0 1.5h.04l.81 9.9A2.25 2.25 0 0 0 6.09 17.5h7.82a2.25 2.25 0 0 0 2.24-2.1l.81-9.9H17a.75.75 0 0 0 0-1.5h-3v-.25A2.75 2.75 0 0 0 11.25 1h-2.5ZM7.5 3.75c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5v-.25ZM7 8.75a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 7 8.75Zm6 0a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 13 8.75Z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  <Trash2 className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
                   Eliminar
                 </button>
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LogOut, Plus, X } from "lucide-react";
 import { useAuth } from "@/lib/supabase/auth";
 import { useHydrated } from "@/lib/useHydrated";
 import { inviteToApp } from "@/app/supabase-actions";
@@ -172,18 +173,7 @@ export default function UserMenu() {
               }}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
-              <svg
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-4 w-4 shrink-0 text-text-secondary"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.25a.75.75 0 0 0-1.5 0v2.5h-2.5a.75.75 0 0 0 0 1.5h2.5v2.5a.75.75 0 0 0 1.5 0v-2.5h2.5a.75.75 0 0 0 0-1.5h-2.5v-2.5Z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              <Plus className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
               Invitar a usar la app
             </button>
           )}
@@ -196,23 +186,7 @@ export default function UserMenu() {
             }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
           >
-            <svg
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-4 w-4 shrink-0 text-text-secondary"
-              aria-hidden="true"
-            >
-              <path
-                fillRule="evenodd"
-                d="M3 4.25A2.25 2.25 0 0 1 5.25 2h5.5A2.25 2.25 0 0 1 13 4.25v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 0 0 .75-.75v-1.5a.75.75 0 0 1 1.5 0v1.5A2.25 2.25 0 0 1 10.75 18h-5.5A2.25 2.25 0 0 1 3 15.75V4.25Z"
-                clipRule="evenodd"
-              />
-              <path
-                fillRule="evenodd"
-                d="M19 10a.75.75 0 0 1-.75.75H11.56l1.72 1.72a.75.75 0 1 1-1.06 1.06l-3-3a.75.75 0 0 1 0-1.06l3-3a.75.75 0 0 1 1.06 1.06l-1.72 1.72h6.69A.75.75 0 0 1 19 10Z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <LogOut className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
             Cerrar sesión
           </button>
         </div>
@@ -241,14 +215,8 @@ export default function UserMenu() {
                 aria-label="Cerrar"
                 className="rounded-lg p-1 text-text-secondary hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                >
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
+                <X className="h-5 w-5" aria-hidden />
+
               </button>
             </div>
 
@@ -359,14 +327,8 @@ export default function UserMenu() {
                 aria-label="Cerrar"
                 className="rounded-lg p-1 text-text-secondary hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                >
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
+                <X className="h-5 w-5" aria-hidden />
+
               </button>
             </div>
             <p className="mb-3 text-xs text-text-secondary">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ShoppingBasket } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -14,11 +15,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import ListCard from "@/components/ListCard";
+import PageTransition from "@/components/PageTransition";
 import { useListStore } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
 import { useAuth } from "@/lib/supabase/auth";
 import type { List } from "@/lib/types";
 import AuthGateCta from "@/components/AuthGateCta";
+import EmptyState from "@/components/EmptyState";
 import InstallPrompt from "@/components/InstallPrompt";
 import ThemeToggle from "@/components/ThemeToggle";
 import UserMenu from "@/components/UserMenu";
@@ -37,7 +40,20 @@ export default function Home() {
   const sharedLists = lists.filter((l) => l.role === "editor").sort(byPosition);
 
   const [newName, setNewName] = useState("");
-const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const newListInputRef = useRef<HTMLInputElement>(null);
+
+  function focusNewList() {
+    newListInputRef.current?.focus();
+  }
+
+  function flashList(id: string) {
+    setHighlightedId(id);
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    highlightTimer.current = setTimeout(() => setHighlightedId(null), 700);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -49,8 +65,9 @@ const [voiceError, setVoiceError] = useState<string | null>(null);
     e.preventDefault();
     if (!isSignedIn) return; // la UI ya bloquea sin sesión
     if (!newName.trim()) return;
-    createList(newName);
+    const id = createList(newName);
     setNewName("");
+    if (id) flashList(id);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -62,6 +79,7 @@ const [voiceError, setVoiceError] = useState<string | null>(null);
   }
 
   return (
+    <PageTransition>
     <div className="mx-auto w-full max-w-lg flex-1 p-6">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
@@ -87,6 +105,7 @@ const [voiceError, setVoiceError] = useState<string | null>(null);
           </label>
           <input
             id="new-list-name"
+            ref={newListInputRef}
             type="text"
             placeholder="Nueva lista..."
             value={newName}
@@ -127,9 +146,24 @@ const [voiceError, setVoiceError] = useState<string | null>(null);
               Mis listas
             </h2>
             {myLists.length === 0 ? (
-              <p className="text-sm text-text-secondary">
-                Aún no tienes listas. Crea la primera arriba.
-              </p>
+              <EmptyState
+                icon={
+                  <ShoppingBasket className="h-6 w-6" aria-hidden />
+                }
+                title="Tus listas aparecen acá"
+                description="Aún no tenés listas. Creá la primera arriba."
+                action={
+                  isSignedIn ? (
+                    <button
+                      type="button"
+                      onClick={focusNewList}
+                      className="btn-base btn-primary px-4 py-2 text-sm"
+                    >
+                      Crear la primera lista
+                    </button>
+                  ) : undefined
+                }
+              />
             ) : isSignedIn ? (
               <DndContext
                 sensors={sensors}
@@ -142,7 +176,12 @@ const [voiceError, setVoiceError] = useState<string | null>(null);
                 >
                   <ul className="flex flex-col gap-2">
                     {myLists.map((list) => (
-                      <ListCard key={list.id} list={list} isOwner />
+                      <ListCard
+                        key={list.id}
+                        list={list}
+                        isOwner
+                        highlighted={list.id === highlightedId}
+                      />
                     ))}
                   </ul>
                 </SortableContext>
@@ -150,7 +189,13 @@ const [voiceError, setVoiceError] = useState<string | null>(null);
             ) : (
               <ul className="flex flex-col gap-2">
                 {myLists.map((list) => (
-                  <ListCard key={list.id} list={list} isOwner isReadOnly />
+                  <ListCard
+                    key={list.id}
+                    list={list}
+                    isOwner
+                    isReadOnly
+                    highlighted={list.id === highlightedId}
+                  />
                 ))}
               </ul>
             )}
@@ -175,5 +220,6 @@ const [voiceError, setVoiceError] = useState<string | null>(null);
         <InstallPrompt />
       </div>
     </div>
+    </PageTransition>
   );
 }

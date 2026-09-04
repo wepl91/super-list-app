@@ -4,6 +4,8 @@
 **Versión**: v1
 **Fecha**: 2026-09-03
 
+> **Nota**: este spec fue **integrado/superseded** por `ux-detalle-lista-visual.md` (RF-1 y diseño técnico lo absorben). Se mantiene como referencia del detalle de layout.
+
 ## Contexto / Objetivo
 
 El layout actual del componente `ListItemRow` muestra el nombre, la descripción y la cantidad en una fila horizontal simple. Esto causa dos problemas de UX:
