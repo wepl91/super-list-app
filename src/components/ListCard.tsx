@@ -100,10 +100,12 @@ export default function ListCard({
   };
 
   const completed = list.items.filter((i) => i.completed).length;
-  // El tag "Compartida" deriva de sharedCount (traído por el pull cloud, de
-  // forma determinista) y no del fetch de emails, que solo corre on-demand al
-  // abrir el modal de miembros.
-  const isShared = (list.sharedCount ?? 0) > 0;
+  // El tag "Compartida" solo tiene sentido en las listas propias (isOwner):
+  // es el dato de con quién las compartimos. Las listas compartidas conmigo
+  // son de otros, así que no muestran a quiénes les pertenecen. Deriva de
+  // sharedCount (traído por el pull cloud de forma determinista) y no del
+  // fetch de emails, que solo corre on-demand al abrir el modal de miembros.
+  const isShared = isOwner && (list.sharedCount ?? 0) > 0;
   const progressPct =
     list.items.length > 0 ? Math.round((completed / list.items.length) * 100) : 0;
 

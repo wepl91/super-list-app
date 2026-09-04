@@ -106,6 +106,13 @@ describe("ListCard", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("no muestra el tag en listas compartidas conmigo (isOwner false), aunque tengan sharedCount", () => {
+    render(<ListCard list={{ ...mockUser, sharedCount: 1 }} isOwner={false} />);
+    expect(
+      screen.queryByRole("button", { name: /Ver con quién se compartió/ })
+    ).not.toBeInTheDocument();
+  });
+
   it("abre el modal al hacer click en el tag y fetchea miembros on-demand", async () => {
     getSharedMemberEmails.mockResolvedValue([
       { listId: "l1", userId: "u2", email: "a@b.com" },
