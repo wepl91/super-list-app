@@ -71,6 +71,12 @@
   }
 }
 
+@keyframes shimmer {
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 /* Botones base: primario, outline, ghost y destructivo */
 @utility btn-base {
   display: inline-flex;
@@ -137,11 +143,33 @@
   animation: slide-up 0.2s var(--ease-out-expo) both;
 }
 
+/* Skeleton loading: bloque gris con shimmer, para el estado de espera */
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background-color: var(--hover-surface);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--foreground) 6%, transparent),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s var(--ease-out-expo) infinite;
+  }
+}
+
 /* Motion: respetar preferencia de menos movimiento (solo utilidades de motion) */
 @media (prefers-reduced-motion: reduce) {
   .animate-row-pop,
   .animate-fade-in,
   .animate-slide-up,
+  .skeleton::after,
   .btn-base {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
