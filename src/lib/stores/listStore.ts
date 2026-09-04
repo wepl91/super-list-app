@@ -226,6 +226,9 @@ export const useListStore = create<ListState>()(
               role: remote.role,
               ownerId: remote.ownerId,
               syncStatus: stillDirty ? "dirty" : "synced",
+              // el remote no trae emails (on-demand); se conservan los ya
+              // resueltos localmente para no borrar el modal de miembros.
+              sharedMembers: local.sharedMembers,
             });
           }
 

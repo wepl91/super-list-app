@@ -67,7 +67,8 @@ export function toList(
   listRow: ListRow,
   items: ListItem[],
   role: ListMembershipRole,
-  sharedMembers: { userId: string; email: string }[] = []
+  sharedMembers: { userId: string; email: string }[] = [],
+  sharedCount = 0
 ): List {
   return {
     id: listRow.id,
@@ -79,5 +80,6 @@ export function toList(
     ownerId: listRow.owner_id,
     role,
     sharedMembers,
+    sharedCount,
   };
 }

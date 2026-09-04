@@ -14,11 +14,14 @@ import {
   RefreshCw,
   Share,
   Trash2,
+  Users,
+  X,
 } from "lucide-react";
 import type { List } from "@/lib/types";
 import { useListStore } from "@/lib/stores/listStore";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { getSharedMemberEmails } from "@/app/supabase-actions";
 import AddMemberForm from "@/components/AddMemberForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
@@ -40,12 +43,14 @@ export default function ListCard({
   const cloneList = useListStore((s) => s.cloneList);
   const deleteList = useListStore((s) => s.deleteList);
   const renameList = useListStore((s) => s.renameList);
+  const setListSharedMembers = useListStore((s) => s.setListSharedMembers);
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState(list.name);
   const [syncTipOpen, setSyncTipOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [flashSelf, setFlashSelf] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -95,8 +100,10 @@ export default function ListCard({
   };
 
   const completed = list.items.filter((i) => i.completed).length;
-  const sharedMembers = list.sharedMembers;
-  const isShared = !!sharedMembers && sharedMembers.length > 0;
+  // El tag "Compartida" deriva de sharedCount (traído por el pull cloud, de
+  // forma determinista) y no del fetch de emails, que solo corre on-demand al
+  // abrir el modal de miembros.
+  const isShared = (list.sharedCount ?? 0) > 0;
   const progressPct =
     list.items.length > 0 ? Math.round((completed / list.items.length) * 100) : 0;
 
@@ -212,9 +219,18 @@ export default function ListCard({
             <div className="flex items-center gap-1.5">
               <p className="truncate text-sm font-medium">{list.name}</p>
               {isShared && (
-                <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setMembersOpen(true);
+                  }}
+                  aria-label={`Ver con quién se compartió ${list.name}`}
+                  className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                   Compartida
-                </span>
+                </button>
               )}
             </div>
             <p className="text-xs text-text-secondary">
@@ -235,11 +251,6 @@ export default function ListCard({
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-            )}
-            {isShared && (
-              <p className="mt-0.5 truncate text-xs text-text-secondary">
-                {sharedMembers.map((m) => m.email).join(", ")}
-              </p>
             )}
           </Link>
         )}
@@ -339,6 +350,160 @@ export default function ListCard({
           deleteList(list.id);
         }}
       />
+
+      {membersOpen && (
+        <MembersDialog
+          list={list}
+          onClose={() => setMembersOpen(false)}
+          setListSharedMembers={setListSharedMembers}
+        />
+      )}
     </li>
+  );
+}
+
+function MembersDialog({
+  list,
+  onClose,
+  setListSharedMembers,
+}: {
+  list: List;
+  onClose: () => void;
+  setListSharedMembers: (listId: string, members: { userId: string; email: string }[]) => void;
+}) {
+  const [loading, setLoading] = useState(
+    !list.sharedMembers || list.sharedMembers.length === 0
+  );
+  const [error, setError] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  // Se captura al montar si ya había emails resueltos; si no, se fetchean
+  // on-demand al abrir el modal (no en el montaje inicial de la home, que era
+  // frágil). Vivir en una ref evita re-ejecutar el effect cuando el fetch
+  // actualiza los members del store.
+  const alreadyLoadedRef = useRef(
+    !!(list.sharedMembers && list.sharedMembers.length > 0)
+  );
+
+  useEffect(() => {
+    closeRef.current?.focus();
+
+    if (alreadyLoadedRef.current) return;
+
+    let cancelled = false;
+    getSharedMemberEmails()
+      .then((shared) => {
+        if (cancelled) return;
+        const members = shared
+          .filter((s) => s.listId === list.id)
+          .map((s) => ({ userId: s.userId, email: s.email }));
+        setListSharedMembers(list.id, members);
+        setLoading(false);
+        setError(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoading(false);
+        setError(true);
+      });
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [list.id, onClose, setListSharedMembers]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="members-title"
+    >
+      <div
+        className="absolute inset-0 animate-fade-in bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="relative w-full max-w-sm animate-slide-up rounded-2xl border border-zinc-200 bg-background p-5 shadow-xl dark:border-zinc-700">
+        <div className="flex items-start justify-between gap-2">
+          <h2
+            id="members-title"
+            className="flex items-center gap-2 text-base font-semibold"
+          >
+            <Users className="h-4 w-4 text-text-secondary" aria-hidden />
+            Compartida
+          </h2>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="shrink-0 rounded-lg p-1 text-text-secondary hover:bg-zinc-100 hover:text-foreground dark:hover:bg-zinc-800"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+        <p className="mb-3 mt-1 text-xs text-text-secondary">
+          {list.name}
+        </p>
+
+        {loading ? (
+          <div className="flex items-center gap-2 py-6 text-sm text-text-secondary">
+            <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
+            Cargando miembros...
+          </div>
+        ) : error ? (
+          <div className="py-4">
+            <p className="text-sm text-red-600 dark:text-red-400">
+              No pudimos cargar los miembros. Intentalo de nuevo.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setError(false);
+                setLoading(true);
+                getSharedMemberEmails()
+                  .then((shared) => {
+                    const members = shared
+                      .filter((s) => s.listId === list.id)
+                      .map((s) => ({ userId: s.userId, email: s.email }));
+                    setListSharedMembers(list.id, members);
+                    setLoading(false);
+                    setError(false);
+                  })
+                  .catch(() => {
+                    setLoading(false);
+                    setError(true);
+                  });
+              }}
+              className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {list.sharedMembers && list.sharedMembers.length > 0 ? (
+              list.sharedMembers.map((m) => (
+                <li
+                  key={m.userId}
+                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"
+                >
+                  {m.email}
+                </li>
+              ))
+            ) : (
+              <li className="py-2 text-sm text-text-secondary">
+                Esta lista no tiene miembros compartidos.
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }

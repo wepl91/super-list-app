@@ -24,6 +24,8 @@ export interface List {
   syncStatus?: SyncStatus;
   /** Emails de los miembros con quienes se compartió la lista (sin el owner). */
   sharedMembers?: { userId: string; email: string }[];
+  /** Cantidad de miembros (distintos del owner) con los que se comparte la lista. */
+  sharedCount?: number;
 }
 
 export interface ListMember {
