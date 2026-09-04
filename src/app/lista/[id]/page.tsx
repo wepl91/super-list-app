@@ -10,6 +10,7 @@ import type { NewItemInput } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
 import ListItemRow from "@/components/ListItemRow";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
+import LoadingState from "@/components/LoadingState";
 import PageTransition from "@/components/PageTransition";
 import ProgressSummary from "@/components/ProgressSummary";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -27,6 +28,7 @@ export default function ListDetailPage({
 }) {
   const { id } = use(params);
   const list = useListStore((s) => s.lists.find((l) => l.id === id));
+  const ready = useListStore((s) => s.ready);
   const hydrated = useHydrated();
   const { user, status } = useAuth();
   const isSignedIn = status === "signedIn";
@@ -91,13 +93,16 @@ export default function ListDetailPage({
 
   const hasCompleted = (list?.items ?? []).some((i) => i.completed);
 
-  if (!hydrated) {
+  // Si hay sesión, no renderizar desde la caché local hasta que el primer
+  // sync cloud resuelva, para evitar el parpadeo (badge de compartida,
+  // estado de sync, elementos) entre un frame y el siguiente. También se
+  // espera mientras la sesión se restaura (status loading) para no mostrar
+  // data de caché que aún podría no corresponder.
+  if (!hydrated || status === "loading" || (isSignedIn && !ready)) {
     return (
       <PageTransition>
         <div className="mx-auto w-full max-w-lg flex-1 p-6">
-          <p className="text-sm text-text-secondary">
-            Cargando...
-          </p>
+          <LoadingState variant="detail" />
         </div>
       </PageTransition>
     );

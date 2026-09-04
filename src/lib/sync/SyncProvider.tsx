@@ -25,9 +25,16 @@ export function SyncProvider() {
     if (!user || !supabase) return;
 
     // hidratación cloud: pull de listas + merge
-    pullAll(supabase, user.id).catch((err) =>
-      console.error("Error hidratando listas:", err)
-    );
+    // (si falla, igual marcamos ready para no dejar la home colgada en el
+    // loader y mostrar al menos la caché local como fallback)
+    pullAll(supabase, user.id)
+      .then(() => {
+        useListStore.setState({ ready: true });
+      })
+      .catch((err) => {
+        console.error("Error hidratando listas:", err);
+        useListStore.setState({ ready: true });
+      });
 
     // emails de los miembros compartidos (para las listas donde soy owner)
     getSharedMemberEmails()
