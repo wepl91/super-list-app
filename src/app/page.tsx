@@ -31,6 +31,7 @@ export default function Home() {
   const lists = useListStore((s) => s.lists);
   const createList = useListStore((s) => s.createList);
   const reorderLists = useListStore((s) => s.reorderLists);
+  const ready = useListStore((s) => s.ready);
   const hydrated = useHydrated();
   const { status } = useAuth();
   const isSignedIn = status === "signedIn";
@@ -139,81 +140,87 @@ export default function Home() {
         </p>
       )}
 
-      {hydrated && (
-        <div className="flex flex-col gap-6">
-          <section aria-label="Mis listas">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Mis listas
-            </h2>
-            {myLists.length === 0 ? (
-              <EmptyState
-                icon={
-                  <ShoppingBasket className="h-6 w-6" aria-hidden />
-                }
-                title="Tus listas aparecen acá"
-                description="Aún no tenés listas. Creá la primera arriba."
-                action={
-                  isSignedIn ? (
-                    <button
-                      type="button"
-                      onClick={focusNewList}
-                      className="btn-base btn-primary px-4 py-2 text-sm"
-                    >
-                      Crear la primera lista
-                    </button>
-                  ) : undefined
-                }
-              />
-            ) : isSignedIn ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={myLists.map((l) => l.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <ul className="flex flex-col gap-2">
-                    {myLists.map((list) => (
-                      <ListCard
-                        key={list.id}
-                        list={list}
-                        isOwner
-                        highlighted={list.id === highlightedId}
-                      />
-                    ))}
-                  </ul>
-                </SortableContext>
-              </DndContext>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {myLists.map((list) => (
-                  <ListCard
-                    key={list.id}
-                    list={list}
-                    isOwner
-                    isReadOnly
-                    highlighted={list.id === highlightedId}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {sharedLists.length > 0 && (
-            <section aria-label="Listas compartidas">
+      {isSignedIn && !ready ? (
+        <p className="text-sm text-text-secondary" role="status">
+          Cargando tus listas…
+        </p>
+      ) : (
+        hydrated && (
+          <div className="flex flex-col gap-6">
+            <section aria-label="Mis listas">
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Compartidas conmigo
+                Mis listas
               </h2>
-              <ul className="flex flex-col gap-2">
-                {sharedLists.map((list) => (
-                  <ListCard key={list.id} list={list} isOwner={false} />
-                ))}
-              </ul>
+              {myLists.length === 0 ? (
+                <EmptyState
+                  icon={
+                    <ShoppingBasket className="h-6 w-6" aria-hidden />
+                  }
+                  title="Tus listas aparecen acá"
+                  description="Aún no tenés listas. Creá la primera arriba."
+                  action={
+                    isSignedIn ? (
+                      <button
+                        type="button"
+                        onClick={focusNewList}
+                        className="btn-base btn-primary px-4 py-2 text-sm"
+                      >
+                        Crear la primera lista
+                      </button>
+                    ) : undefined
+                  }
+                />
+              ) : isSignedIn ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={myLists.map((l) => l.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <ul className="flex flex-col gap-2">
+                      {myLists.map((list) => (
+                        <ListCard
+                          key={list.id}
+                          list={list}
+                          isOwner
+                          highlighted={list.id === highlightedId}
+                        />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {myLists.map((list) => (
+                    <ListCard
+                      key={list.id}
+                      list={list}
+                      isOwner
+                      isReadOnly
+                      highlighted={list.id === highlightedId}
+                    />
+                  ))}
+                </ul>
+              )}
             </section>
-          )}
-        </div>
+
+            {sharedLists.length > 0 && (
+              <section aria-label="Listas compartidas">
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                  Compartidas conmigo
+                </h2>
+                <ul className="flex flex-col gap-2">
+                  {sharedLists.map((list) => (
+                    <ListCard key={list.id} list={list} isOwner={false} />
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+        )
       )}
 
       <div className="mt-8 flex flex-col gap-4">

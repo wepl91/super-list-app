@@ -27,6 +27,7 @@ export default function ListDetailPage({
 }) {
   const { id } = use(params);
   const list = useListStore((s) => s.lists.find((l) => l.id === id));
+  const ready = useListStore((s) => s.ready);
   const hydrated = useHydrated();
   const { user, status } = useAuth();
   const isSignedIn = status === "signedIn";
@@ -91,7 +92,10 @@ export default function ListDetailPage({
 
   const hasCompleted = (list?.items ?? []).some((i) => i.completed);
 
-  if (!hydrated) {
+  // Si hay sesión, no renderizar desde la caché local hasta que el primer
+  // sync cloud resuelva, para evitar el parpadeo (badge de compartida,
+  // estado de sync, elementos) entre un frame y el siguiente.
+  if (!hydrated || (isSignedIn && !ready)) {
     return (
       <PageTransition>
         <div className="mx-auto w-full max-w-lg flex-1 p-6">
