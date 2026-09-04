@@ -7,13 +7,14 @@ import { getSupabase } from "../supabase/client";
 import { useListStore } from "../stores/listStore";
 import { pullAll } from "./service";
 import { useListItemsRealtime } from "./realtime";
-import { getSharedMemberEmails } from "@/app/supabase-actions";
+import { getSharedCounts, getSharedMemberEmails } from "@/app/supabase-actions";
 
 export function SyncProvider() {
   const { user } = useAuth();
   const setServerUserId = useListStore((s) => s.setServerUserId);
   const setOnline = useListStore((s) => s.setOnline);
   const setListSharedMembers = useListStore((s) => s.setListSharedMembers);
+  const setSharedCounts = useListStore((s) => s.setSharedCounts);
   const listIds = useListStore(
     useShallow((s) => (s.serverUserId ? s.lists.map((l) => l.id) : []))
   );
@@ -24,16 +25,30 @@ export function SyncProvider() {
     setServerUserId(user?.id ?? null);
     if (!user || !supabase) return;
 
+    // cantidades de miembros compartidos por lista (service role): alimentan el
+    // tag determinista "Compartida" de la home. Se resuelve DESPUÉS del pull
+    // para que las listas ya estén en el store y no haya un race de orden.
+    async function refreshSharedCounts() {
+      try {
+        const counts = await getSharedCounts();
+        setSharedCounts(counts);
+      } catch (err) {
+        console.error("Error resolviendo cantidades compartidas:", err);
+      }
+    }
+
     // hidratación cloud: pull de listas + merge
     // (si falla, igual marcamos ready para no dejar la home colgada en el
     // loader y mostrar al menos la caché local como fallback)
     pullAll(supabase, user.id)
       .then(() => {
         useListStore.setState({ ready: true });
+        return refreshSharedCounts();
       })
       .catch((err) => {
         console.error("Error hidratando listas:", err);
         useListStore.setState({ ready: true });
+        return refreshSharedCounts();
       });
 
     // emails de los miembros compartidos (para las listas donde soy owner)
@@ -50,7 +65,7 @@ export function SyncProvider() {
         }
       })
       .catch((err) => console.error("Error resolviendo emails compartidos:", err));
-  }, [user, user?.id, supabase, setServerUserId, setListSharedMembers]);
+  }, [user, user?.id, supabase, setServerUserId, setListSharedMembers, setSharedCounts]);
 
   // estado online/offline + flush al reconectar
   useEffect(() => {
