@@ -55,6 +55,7 @@ interface ListState {
     listId: string,
     members: { userId: string; email: string }[]
   ) => void;
+  setSharedCounts: (counts: { listId: string; count: number }[]) => void;
   mergeRemote: (remoteLists: List[]) => void;
   applyRemoteListItem: (listId: string, item: ListItem) => void;
   applyRemoteRemoveItem: (listId: string, itemId: string) => void;
@@ -188,6 +189,20 @@ export const useListStore = create<ListState>()(
           })),
         })),
 
+      setSharedCounts: (counts) =>
+        set((state) => {
+          const countById = new Map(counts.map((c) => [c.listId, c.count]));
+          return {
+            lists: state.lists.map((list) => {
+              // fuentes de verdad: el conteo viene del service role; si una
+              // lista no aparece, queda como está (no lo pisamos con 0).
+              const count = countById.get(list.id);
+              if (count === undefined) return list;
+              return { ...list, sharedCount: count };
+            }),
+          };
+        }),
+
       setOnline: (online) => {
         set({ online });
         if (online) get().flushOutbox();
@@ -226,9 +241,11 @@ export const useListStore = create<ListState>()(
               role: remote.role,
               ownerId: remote.ownerId,
               syncStatus: stillDirty ? "dirty" : "synced",
-              // el remote no trae emails (on-demand); se conservan los ya
-              // resueltos localmente para no borrar el modal de miembros.
+              // ni emails ni sharedCount los trae el remote (vienen de server
+              // actions con service role); se conservan los ya resueltos para
+              // no borrar el modal de miembros ni el tag determinista.
               sharedMembers: local.sharedMembers,
+              sharedCount: local.sharedCount,
             });
           }
 

@@ -423,6 +423,44 @@ export async function getSharedMemberEmails(): Promise<SharedMemberEmails> {
   return result;
 }
 
+/**
+ * Devuelve, por cada lista de la que el usuario es owner, la cantidad de
+ * miembros (distintos del owner) con los que se compartió. Con service role
+ * (bypass RLS) porque el cliente con RLS solo puede ver sus propias membresías
+ * (ver policy list_members_select_own). Este dato hace que el tag "Compartida"
+ * de la home sea determinista, sin depender del fetch de emails on-demand.
+ */
+export async function getSharedCounts(): Promise<{ listId: string; count: number }[]> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: myLists } = await supabase
+    .from("lists")
+    .select("id, owner_id")
+    .eq("owner_id", user.id);
+
+  const ownedIds = (myLists ?? []).map((l) => l.id);
+  if (ownedIds.length === 0) return [];
+
+  const svc = getServiceClient();
+  const { data: members } = await svc
+    .from("list_members")
+    .select("list_id, user_id")
+    .in("list_id", ownedIds);
+
+  const owners = new Set((myLists ?? []).map((l) => l.owner_id));
+  const countById = new Map<string, number>();
+  for (const m of members ?? []) {
+    if (owners.has(m.user_id)) continue;
+    countById.set(m.list_id, (countById.get(m.list_id) ?? 0) + 1);
+  }
+
+  return [...countById.entries()].map(([listId, count]) => ({ listId, count }));
+}
+
 export type SavePushSubscriptionInput = {
   endpoint: string;
   keys: { p256dh: string; auth: string };

@@ -11,16 +11,21 @@ const row: ListRow = {
 };
 
 describe("toList", () => {
-  it("propaga sharedCount y role", () => {
-    const list = toList(row, [], "owner", [], 3);
-    expect(list.sharedCount).toBe(3);
+  it("mapea role, ownerId y sharedMembers", () => {
+    const list = toList(
+      row,
+      [],
+      "owner",
+      [{ userId: "u2", email: "a@b.com" }]
+    );
     expect(list.role).toBe("owner");
-    expect(list.sharedMembers).toEqual([]);
+    expect(list.ownerId).toBe("u1");
+    expect(list.sharedMembers).toEqual([{ userId: "u2", email: "a@b.com" }]);
   });
 
-  it("por defecto compartida no tiene miembros (sharedCount 0)", () => {
+  it("por defecto los miembros compartidos van vacíos", () => {
     const list = toList(row, [], "editor");
-    expect(list.sharedCount).toBe(0);
     expect(list.sharedMembers).toEqual([]);
+    expect(list.role).toBe("editor");
   });
 });

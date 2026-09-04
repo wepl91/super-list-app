@@ -57,24 +57,6 @@ export async function pullAll(
     itemsByList.set(row.list_id, items);
   }
 
-  // Cuántos miembros tiene cada lista (distintos del owner). Con esta info el
-  // tag "Compartida" de la home es determinista y no depende del fetch de
-  // emails (que es on-demand y solo corre al abrir el modal de miembros).
-  const { data: memberRows, error: memberError } = await supabase
-    .from("list_members")
-    .select("list_id, user_id")
-    .in("list_id", allListIds);
-  if (memberError) throw memberError;
-
-  const ownerById = new Map(
-    (listRows ?? []).map((r) => [r.id, r.owner_id])
-  );
-  const sharedCountById = new Map<string, number>();
-  for (const m of memberRows ?? []) {
-    if (m.user_id === ownerById.get(m.list_id)) continue;
-    sharedCountById.set(m.list_id, (sharedCountById.get(m.list_id) ?? 0) + 1);
-  }
-
   const remoteLists: List[] = (listRows ?? []).map((row: ListRow) => {
     const role =
       roleById.get(row.id) ??
@@ -82,9 +64,7 @@ export async function pullAll(
     return toList(
       row,
       itemsByList.get(row.id) ?? ([] as ListItem[]),
-      role,
-      [],
-      sharedCountById.get(row.id) ?? 0
+      role
     );
   });
 
