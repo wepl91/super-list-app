@@ -1,5 +1,5 @@
 import { Suspense, act } from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ListDetailPage from "@/app/lista/[id]/page";
@@ -70,6 +70,20 @@ async function renderPage() {
 }
 
 describe("ListDetailPage (smoke)", () => {
+  beforeEach(() => {
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+    window.matchMedia = (() => ({
+      matches: false,
+      media: "",
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+  });
+
   it("muestra el FAB cerrado y sin form al navegar con sesión", async () => {
     await renderPage();
     const fab = screen.getByRole("button", { name: "Añadir elemento" });
@@ -104,6 +118,11 @@ describe("ListDetailPage (smoke)", () => {
       expect(screen.queryByRole("form")).not.toBeInTheDocument()
     );
     expect(screen.getByRole("button", { name: "Añadir elemento" })).toHaveFocus();
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      top: 0,
+      left: 0,
+      behavior: "smooth",
+    });
   });
 
   it("Escape cierra el form y devuelve el foco al FAB", async () => {
@@ -124,6 +143,11 @@ describe("ListDetailPage (smoke)", () => {
       expect(screen.queryByRole("form")).not.toBeInTheDocument()
     );
     expect(screen.getByRole("button", { name: "Añadir elemento" })).toHaveFocus();
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      top: 0,
+      left: 0,
+      behavior: "smooth",
+    });
   });
 
   it("sin sesión no muestra FAB y sí AuthGateCta", async () => {

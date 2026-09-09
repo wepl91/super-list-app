@@ -59,6 +59,16 @@ export default function ListDetailPage({
     setAddFormOpen(false);
     setAddFormClosing(false);
     fabRef.current?.focus();
+    if (typeof window.scrollTo === "function") {
+      const reduce = window.matchMedia?.(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: reduce ? "auto" : "smooth",
+      });
+    }
   }
 
   function toggleForm() {
