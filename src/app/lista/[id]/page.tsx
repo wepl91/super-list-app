@@ -1,12 +1,10 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Hand, ShoppingBasket, Users } from "lucide-react";
+import { ArrowLeft, Hand, Plus, ShoppingBasket, Users, X } from "lucide-react";
 import { useListStore } from "@/lib/stores/listStore";
 import { usePreferences } from "@/lib/stores/preferencesStore";
-import { haptic } from "@/lib/haptics";
-import type { NewItemInput } from "@/lib/stores/listStore";
 import { useHydrated } from "@/lib/useHydrated";
 import ListItemRow from "@/components/ListItemRow";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
@@ -15,9 +13,9 @@ import PageTransition from "@/components/PageTransition";
 import ProgressSummary from "@/components/ProgressSummary";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import AddMemberForm from "@/components/AddMemberForm";
+import AddItemForm from "@/components/AddItemForm";
 import AuthGateCta from "@/components/AuthGateCta";
 import EmptyState from "@/components/EmptyState";
-import VoiceDictationButton from "@/components/VoiceDictationButton";
 import { useAuth } from "@/lib/supabase/auth";
 import { getSharedMemberEmails } from "@/app/supabase-actions";
 
@@ -39,16 +37,34 @@ export default function ListDetailPage({
 
   const isOwner = !!user && !!list && list.ownerId === user.id;
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [unit, setUnit] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [sharedInfoOpen, setSharedInfoOpen] = useState(false);
+  const [addFormOpen, setAddFormOpen] = useState(false);
+  const [addFormClosing, setAddFormClosing] = useState(false);
+  const fabRef = useRef<HTMLButtonElement>(null);
 
   const listId = list?.id;
+
+  function openForm() {
+    setAddFormClosing(false);
+    setAddFormOpen(true);
+  }
+
+  function requestClose() {
+    if (addFormOpen && !addFormClosing) setAddFormClosing(true);
+  }
+
+  function completeClose() {
+    setAddFormOpen(false);
+    setAddFormClosing(false);
+    fabRef.current?.focus();
+  }
+
+  function toggleForm() {
+    if (addFormOpen) requestClose();
+    else openForm();
+  }
 
   useEffect(() => {
     if (!isSignedIn || !isOwner || !listId) return;
@@ -68,22 +84,6 @@ export default function ListDetailPage({
   }, [isSignedIn, isOwner, listId]);
 
   const hasList = list !== undefined;
-
-  function resetForm() {
-    setName("");
-    setDescription("");
-    setQuantity(1);
-    setUnit("");
-  }
-
-  function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim() || !list) return;
-    const input: NewItemInput = { name, description, quantity, unit };
-    useListStore.getState().addItem(list.id, input);
-    if (focusMode) haptic();
-    resetForm();
-  }
 
   function handleSaveEdit(input: { name: string; description?: string; quantity: number; unit?: string }) {
     if (!list) return;
@@ -135,7 +135,7 @@ export default function ListDetailPage({
 
   return (
     <PageTransition>
-    <div className="mx-auto w-full max-w-lg flex-1 p-6">
+    <div className="mx-auto w-full max-w-lg flex-1 p-6 pb-24">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div className="flex items-start gap-1">
           <Link
@@ -200,104 +200,14 @@ export default function ListDetailPage({
       )}
 
       {isSignedIn ? (
-        focusMode ? (
-          <form
-            onSubmit={handleAdd}
-            className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-4 dark:border-zinc-700"
-            aria-label="Añadir elemento"
-          >
-            <label htmlFor="item-name-focus" className="sr-only">
-              Nombre del elemento
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="item-name-focus"
-                type="text"
-                placeholder="Agregar elemento..."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-surface px-4 py-3 text-lg text-foreground placeholder:text-placeholder dark:border-zinc-700"
-              />
-              <VoiceDictationButton
-                onInterim={setName}
-                onFinal={setName}
-                onError={(msg) => setVoiceError(msg)}
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-lg bg-primary px-4 py-3 text-lg text-white hover:opacity-90"
-            >
-              Agregar
-            </button>
-          </form>
-        ) : (
-          <form
-            onSubmit={handleAdd}
-            className="mb-6 flex flex-col gap-2 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700"
-            aria-label="Añadir elemento"
-          >
-        <label htmlFor="item-name" className="sr-only">
-          Nombre del elemento
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            id="item-name"
-            type="text"
-            placeholder="Elemento..."
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
+        addFormOpen && (
+          <AddItemForm
+            listId={list.id}
+            focusMode={focusMode}
+            closing={addFormClosing}
+            onClose={requestClose}
+            onExited={completeClose}
           />
-          <VoiceDictationButton
-            onInterim={setName}
-            onFinal={setName}
-            onError={(msg) => setVoiceError(msg)}
-          />
-        </div>
-        <label htmlFor="item-desc" className="sr-only">
-          Descripción (opcional)
-        </label>
-        <input
-          id="item-desc"
-          type="text"
-          placeholder="Descripción (opcional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
-        />
-        <div className="flex gap-2">
-          <label htmlFor="item-qty" className="sr-only">
-            Cantidad
-          </label>
-          <input
-            id="item-qty"
-            type="number"
-            min={0}
-            step="0.01"
-            value={quantity}
-            onChange={(e) => setQuantity(Math.max(0, Number(e.target.value) || 0))}
-            className="w-24 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground dark:border-zinc-700"
-          />
-          <label htmlFor="item-unit" className="sr-only">
-            Unidad (opcional)
-          </label>
-          <input
-            id="item-unit"
-            type="text"
-            placeholder="Unidad (kg, l...)"
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            className="flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
-          />
-        </div>
-          <button
-            type="submit"
-            className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90"
-          >
-            Añadir
-          </button>
-          </form>
         )
       ) : (
         <div className="mb-6">
@@ -309,15 +219,6 @@ export default function ListDetailPage({
         <ProgressSummary total={list.items.length} completed={completed} />
       )}
 
-      {voiceError && (
-        <p
-          role="alert"
-          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
-        >
-          {voiceError}
-        </p>
-      )}
-
       {visibleItems.length === 0 ? (
         list.items.length === 0 ? (
           <EmptyState
@@ -325,7 +226,7 @@ export default function ListDetailPage({
               <ShoppingBasket className="h-6 w-6" aria-hidden />
             }
             title="Esta lista está vacía"
-            description="Añadí el primer elemento arriba."
+            description="Añadí el primer elemento tocando el botón +."
           />
         ) : (
           <EmptyState
@@ -398,6 +299,26 @@ export default function ListDetailPage({
         onCancel={() => setSharedInfoOpen(false)}
       />
     </div>
+
+    {isSignedIn && (
+      <button
+        type="button"
+        ref={fabRef}
+        onClick={toggleForm}
+        aria-label={
+          addFormOpen && !addFormClosing ? "Cerrar formulario" : "Añadir elemento"
+        }
+        aria-expanded={addFormOpen && !addFormClosing}
+        aria-controls="add-item-form"
+        className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+      >
+        {addFormOpen && !addFormClosing ? (
+          <X className="h-7 w-7" aria-hidden />
+        ) : (
+          <Plus className="h-7 w-7" aria-hidden />
+        )}
+      </button>
+    )}
     </PageTransition>
   );
 }

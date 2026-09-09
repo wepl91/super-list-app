@@ -143,6 +143,32 @@
   animation: slide-up 0.2s var(--ease-out-expo) both;
 }
 
+/* Collapse: apertura/cierre en altura del form de alta de item.
+   Envuelve al form en un grid `0fr → 1fr` con fade; la transición la
+   dispara la clase -open (o su ausencia) sobre el mismo wrapper.
+   El padding interno del form y el margin-bottom del wrapper también se
+   animan para que el colapso se sienta continuo (sin cortes bruscos). */
+@utility collapse-form {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: 0;
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    margin-bottom 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  & > * {
+    overflow: hidden;
+    min-height: 0;
+    transition: padding 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+@utility collapse-form-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-bottom: 1.5rem;
+}
+
 /* Skeleton loading: bloque gris con shimmer, para el estado de espera */
 @utility skeleton {
   position: relative;
@@ -170,7 +196,9 @@
   .animate-fade-in,
   .animate-slide-up,
   .skeleton::after,
-  .btn-base {
+  .btn-base,
+  .collapse-form,
+  .collapse-form > * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
