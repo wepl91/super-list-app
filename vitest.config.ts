@@ -26,6 +26,7 @@ export default defineConfig({
         "src/lib/stores/preferencesStore.ts",
         "src/components/ConfirmDialog.tsx",
         "src/components/CreateListDialog.tsx",
+        "src/components/AddItemForm.tsx",
         "src/components/AuthGateCta.tsx",
         "src/components/ThemeToggle.tsx",
         "src/components/InstallPrompt.tsx",
