@@ -94,6 +94,22 @@ describe("AddItemForm", () => {
     expect(onExited).toHaveBeenCalledTimes(1);
   });
 
+  it("al iniciar el cierre pierde el foco el input (teclado móvil)", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />
+    );
+    const input = screen.getByLabelText("Nombre del elemento");
+    await user.click(input);
+    expect(input).toHaveFocus();
+
+    rerender(
+      <AddItemForm listId="l1" focusMode={false} closing onClose={onClose} onExited={onExited} />
+    );
+
+    expect(input).not.toHaveFocus();
+  });
+
   it("no agrega nada con nombre vacío o solo espacios", async () => {
     const user = userEvent.setup();
     render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
