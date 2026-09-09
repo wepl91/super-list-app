@@ -58,6 +58,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  interactiveWidget: "overlays-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f4fbf7" },
     { media: "(prefers-color-scheme: dark)", color: "#0b1310" },

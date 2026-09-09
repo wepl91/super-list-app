@@ -52,6 +52,19 @@ describe("AddItemForm", () => {
     expect(screen.getByRole("button", { name: "Añadir" })).toBeInTheDocument();
   });
 
+  it("desactiva autocompletado y autocorrección en los inputs de texto", () => {
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    for (const input of [
+      screen.getByLabelText("Nombre del elemento"),
+      screen.getByLabelText("Descripción (opcional)"),
+      screen.getByLabelText("Unidad (opcional)"),
+    ]) {
+      expect(input).toHaveAttribute("autocomplete", "off");
+      expect(input).toHaveAttribute("autocorrect", "off");
+      expect(input).toHaveAttribute("autocapitalize", "off");
+    }
+  });
+
   it("en modo foco muestra solo nombre y botón Agregar", () => {
     render(<AddItemForm listId="l1" focusMode closing={false} onClose={onClose} onExited={onExited} />);
     expect(screen.getByLabelText("Nombre del elemento")).toBeInTheDocument();

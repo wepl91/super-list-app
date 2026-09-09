@@ -96,6 +96,10 @@ export default function AddItemForm({
               placeholder="Agregar elemento..."
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              enterKeyHint="done"
               className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-surface px-4 py-3 text-lg text-foreground placeholder:text-placeholder dark:border-zinc-700"
             />
             <VoiceDictationButton
@@ -124,6 +128,10 @@ export default function AddItemForm({
               placeholder="Elemento..."
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              enterKeyHint="next"
               className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
             />
             <VoiceDictationButton
@@ -141,6 +149,9 @@ export default function AddItemForm({
             placeholder="Descripción (opcional)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             className="rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
           />
           <div className="flex gap-2">
@@ -167,6 +178,9 @@ export default function AddItemForm({
               placeholder="Unidad (kg, l...)"
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
               className="flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
             />
           </div>
