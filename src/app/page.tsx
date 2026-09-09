@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ShoppingBasket } from "lucide-react";
+import { Plus, ShoppingBasket } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import ListCard from "@/components/ListCard";
+import CreateListDialog from "@/components/CreateListDialog";
 import LoadingState from "@/components/LoadingState";
 import PageTransition from "@/components/PageTransition";
 import { useListStore } from "@/lib/stores/listStore";
@@ -26,11 +27,9 @@ import EmptyState from "@/components/EmptyState";
 import InstallPrompt from "@/components/InstallPrompt";
 import ThemeToggle from "@/components/ThemeToggle";
 import UserMenu from "@/components/UserMenu";
-import VoiceDictationButton from "@/components/VoiceDictationButton";
 
 export default function Home() {
   const lists = useListStore((s) => s.lists);
-  const createList = useListStore((s) => s.createList);
   const reorderLists = useListStore((s) => s.reorderLists);
   const ready = useListStore((s) => s.ready);
   const hydrated = useHydrated();
@@ -41,15 +40,9 @@ export default function Home() {
   const myLists = lists.filter((l) => l.role === "owner").sort(byPosition);
   const sharedLists = lists.filter((l) => l.role === "editor").sort(byPosition);
 
-  const [newName, setNewName] = useState("");
-  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const newListInputRef = useRef<HTMLInputElement>(null);
-
-  function focusNewList() {
-    newListInputRef.current?.focus();
-  }
 
   function flashList(id: string) {
     setHighlightedId(id);
@@ -63,15 +56,6 @@ export default function Home() {
     })
   );
 
-  function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isSignedIn) return; // la UI ya bloquea sin sesión
-    if (!newName.trim()) return;
-    const id = createList(newName);
-    setNewName("");
-    if (id) flashList(id);
-  }
-
   function handleDragEnd(event: DragEndEvent) {
     if (!isSignedIn) return; // la UI ya bloquea sin sesión
     const { active, over } = event;
@@ -82,7 +66,7 @@ export default function Home() {
 
   return (
     <PageTransition>
-    <div className="mx-auto w-full max-w-lg flex-1 p-6">
+    <div className="mx-auto w-full max-w-lg flex-1 p-6 pb-24">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-primary">Super List</h1>
@@ -96,49 +80,10 @@ export default function Home() {
         </div>
       </header>
 
-      {isSignedIn ? (
-        <form
-          onSubmit={handleCreate}
-          className="mb-6 flex gap-2"
-          aria-label="Crear lista"
-        >
-          <label htmlFor="new-list-name" className="sr-only">
-            Nombre de la lista
-          </label>
-          <input
-            id="new-list-name"
-            ref={newListInputRef}
-            type="text"
-            placeholder="Nueva lista..."
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="flex-1 rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
-          />
-          <VoiceDictationButton
-            onInterim={setNewName}
-            onFinal={setNewName}
-            onError={(msg) => setVoiceError(msg)}
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90"
-          >
-            Crear
-          </button>
-        </form>
-      ) : (
+      {!isSignedIn && (
         <div className="mb-6">
           <AuthGateCta />
         </div>
-      )}
-
-      {voiceError && (
-        <p
-          role="alert"
-          className="mb-6 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
-        >
-          {voiceError}
-        </p>
       )}
 
       {status === "loading" || (isSignedIn && !ready) ? (
@@ -156,12 +101,12 @@ export default function Home() {
                     <ShoppingBasket className="h-6 w-6" aria-hidden />
                   }
                   title="Tus listas aparecen acá"
-                  description="Aún no tenés listas. Creá la primera arriba."
+                  description="Aún no tenés listas. Tocá el botón + para crear la primera."
                   action={
                     isSignedIn ? (
                       <button
                         type="button"
-                        onClick={focusNewList}
+                        onClick={() => setCreateOpen(true)}
                         className="btn-base btn-primary px-4 py-2 text-sm"
                       >
                         Crear la primera lista
@@ -226,6 +171,23 @@ export default function Home() {
         <InstallPrompt />
       </div>
     </div>
+
+    {isSignedIn && (
+      <button
+        type="button"
+        onClick={() => setCreateOpen(true)}
+        aria-label="Crear lista"
+        className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+      >
+        <Plus className="h-7 w-7" aria-hidden />
+      </button>
+    )}
+
+    <CreateListDialog
+      open={createOpen}
+      onClose={() => setCreateOpen(false)}
+      onCreated={flashList}
+    />
     </PageTransition>
   );
 }
