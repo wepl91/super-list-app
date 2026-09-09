@@ -44,6 +44,10 @@ export default function AddItemForm({
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  useEffect(() => {
+    if (closing) nameRef.current?.blur();
+  }, [closing]);
+
   function resetForm() {
     setName("");
     setDescription("");
