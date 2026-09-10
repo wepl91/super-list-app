@@ -60,6 +60,23 @@ describe("ListOptionsMenu", () => {
     expect(screen.queryByText("Compartir lista")).not.toBeInTheDocument();
   });
 
+  it("no muestra 'Personalizar lista' cuando canCustomize es false", async () => {
+    const user = userEvent.setup();
+    render(<ListOptionsMenu {...baseProps} />);
+    await user.click(screen.getByRole("button", { name: "Opciones de la lista" }));
+    expect(screen.queryByText("Personalizar lista")).not.toBeInTheDocument();
+  });
+
+  it("muestra 'Personalizar lista' solo para el owner y llama onCustomize", async () => {
+    const onCustomize = vi.fn();
+    const user = userEvent.setup();
+    render(<ListOptionsMenu {...baseProps} canCustomize onCustomize={onCustomize} />);
+    await user.click(screen.getByRole("button", { name: "Opciones de la lista" }));
+    await user.click(screen.getByText("Personalizar lista"));
+    expect(onCustomize).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
   it("muestra 'Compartir lista' cuando canShare y llama onShare", async () => {
     const onShare = vi.fn();
     const user = userEvent.setup();

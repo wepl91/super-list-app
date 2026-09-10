@@ -53,4 +53,14 @@ describe("PantryChips", () => {
     await user.click(screen.getByRole("button", { name: "Usar leche" }));
     expect(onPick).toHaveBeenCalledWith("leche");
   });
+
+  it("muestra la pill respetando el casing del nombre guardado", async () => {
+    const { upsertProduct } = usePantry.getState();
+    upsertProduct({ name: "Leche", emoji: "🥛" });
+    const onPick = vi.fn();
+    const user = userEvent.setup();
+    render(<PantryChips name="" onPick={onPick} />);
+    await user.click(screen.getByRole("button", { name: "Usar Leche" }));
+    expect(onPick).toHaveBeenCalledWith("Leche");
+  });
 });

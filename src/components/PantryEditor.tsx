@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Edit, Plus, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { normalizeProductName } from "@/lib/productNames";
 import { usePantry } from "@/lib/stores/pantryStore";
@@ -50,7 +50,7 @@ function ProductDialog({ product, onClose, onSave }: ProductDialogProps) {
   }
 
   const inputClass =
-    "rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700";
+    "w-full rounded-lg border border-zinc-300 bg-surface px-3 py-2 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700";
 
   return (
     <div
@@ -100,7 +100,7 @@ function ProductDialog({ product, onClose, onSave }: ProductDialogProps) {
             />
           </div>
           <div className="flex gap-2">
-            <div className="flex flex-1 flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor={`${idPrefix}-paisle`} className="text-xs font-medium text-text-secondary">
                 Pasillo (opcional)
               </label>
@@ -114,7 +114,7 @@ function ProductDialog({ product, onClose, onSave }: ProductDialogProps) {
                 className={inputClass}
               />
             </div>
-            <div className="flex flex-1 flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor={`${idPrefix}-pbrand`} className="text-xs font-medium text-text-secondary">
                 Marca (opcional)
               </label>
@@ -164,7 +164,7 @@ export default function PantryEditor() {
   const filtered = useMemo(() => {
     const q = normalizeProductName(query);
     return [...products]
-      .filter((p) => p.name.includes(q))
+      .filter((p) => normalizeProductName(p.name).includes(q))
       .sort((a, b) => b.count - a.count || b.lastUsedAt - a.lastUsedAt);
   }, [products, query]);
 
@@ -173,33 +173,22 @@ export default function PantryEditor() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <label htmlFor="pantry-search" className="sr-only">
-            Buscar en la despensa
-          </label>
-          <Search
-            aria-hidden="true"
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary"
-          />
-          <input
-            id="pantry-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar..."
-            className="w-full rounded-lg border border-zinc-300 bg-surface py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          aria-label="Agregar producto"
-          className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:opacity-90"
-        >
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          Agregar
-        </button>
+      <div className="relative flex-1">
+        <label htmlFor="pantry-search" className="sr-only">
+          Buscar en la despensa
+        </label>
+        <Search
+          aria-hidden="true"
+          className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary"
+        />
+        <input
+          id="pantry-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar..."
+          className="w-full rounded-lg border border-zinc-300 bg-surface py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-placeholder dark:border-zinc-700"
+        />
       </div>
 
       {isEmpty && (
@@ -221,14 +210,13 @@ export default function PantryEditor() {
             key={p.id}
             className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-surface p-3 dark:border-zinc-700"
           >
-            <span
-              aria-hidden="true"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-zinc-100 text-lg dark:bg-zinc-800"
-            >
-              {p.emoji ?? "🛒"}
-            </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground capitalize">
+              <p className="truncate text-sm font-medium text-foreground">
+                {p.emoji && (
+                  <span aria-hidden="true" className="mr-1">
+                    {p.emoji}
+                  </span>
+                )}
                 {p.name}
               </p>
               <p className="truncate text-xs text-text-secondary">
@@ -243,21 +231,30 @@ export default function PantryEditor() {
               type="button"
               aria-label={`Editar ${p.name}`}
               onClick={() => setEditing(p)}
-              className="rounded-lg border border-zinc-300 p-2 text-text-secondary hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              className="shrink-0 rounded-lg p-2 text-text-secondary hover:bg-zinc-100 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800"
             >
-              <Edit aria-hidden="true" className="h-4 w-4" />
+              <Pencil aria-hidden="true" className="h-4 w-4" />
             </button>
             <button
               type="button"
               aria-label={`Eliminar ${p.name}`}
               onClick={() => setDeleteTarget(p)}
-              className="rounded-lg border border-zinc-300 p-2 text-red-600 hover:bg-red-50 dark:border-zinc-700 dark:hover:bg-red-950"
+              className="shrink-0 rounded-lg p-2 text-text-secondary hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-red-950 dark:hover:text-red-400"
             >
               <Trash2 aria-hidden="true" className="h-4 w-4" />
             </button>
           </li>
         ))}
       </ul>
+
+      <button
+        type="button"
+        onClick={() => setCreating(true)}
+        aria-label="Agregar producto"
+        className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
+      >
+        <Plus aria-hidden="true" className="h-6 w-6" />
+      </button>
 
       {(creating || editing) && (
         <ProductDialog

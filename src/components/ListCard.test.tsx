@@ -143,7 +143,9 @@ describe("ListCard", () => {
     );
     const emoji = screen.getByText("🛒");
     expect(emoji).toHaveAttribute("aria-hidden", "true");
-    expect(container.querySelector("li")?.className).toContain("border-teal-500");
+    const li = container.querySelector("li") as HTMLElement;
+    expect(li.style.borderLeftWidth).toBe("3px");
+    expect(li.style.borderLeftColor).toBe("rgb(20, 184, 166)");
   });
 
   it("muestra la identidad también en listas compartidas conmigo (isOwner false)", () => {
@@ -154,12 +156,15 @@ describe("ListCard", () => {
       />
     );
     expect(screen.getByText("🧾")).toHaveAttribute("aria-hidden", "true");
-    expect(container.querySelector("li")?.className).toContain("border-rose-500");
+    const li = container.querySelector("li") as HTMLElement;
+    expect(li.style.borderLeftColor).toBe("rgb(244, 63, 94)");
   });
 
   it("sin identidad aplica un acento determinístico por id (no rompe)", () => {
     const { container } = render(<ListCard list={mockUser} />);
-    expect(container.querySelector("li")?.className).toMatch(/border-(emerald|sky|amber|rose|violet|teal)-500/);
+    const li = container.querySelector("li") as HTMLElement;
+    expect(li.style.borderLeftWidth).toBe("3px");
+    expect(li.style.borderLeftColor).toMatch(/^rgb\(/);
   });
 
   it("el menú 'Personalizar' (owner) abre el editor y Guardar persiste la identidad", async () => {

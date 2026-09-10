@@ -211,7 +211,7 @@ describe("AddItemForm", () => {
     await user.type(screen.getByLabelText("Nombre del elemento"), "Leche");
     await user.click(screen.getByRole("button", { name: "Añadir" }));
     expect(usePantry.getState().products).toEqual([
-      expect.objectContaining({ name: "leche", count: 1 }),
+      expect.objectContaining({ name: "Leche", count: 1 }),
     ]);
   });
 
@@ -222,7 +222,7 @@ describe("AddItemForm", () => {
     usePantry.getState().recordItem("Leche");
     const user = userEvent.setup();
     render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
-    await user.click(screen.getByRole("button", { name: "Usar leche" }));
-    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("leche");
+    await user.click(screen.getByRole("button", { name: "Usar Leche" }));
+    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("Leche");
   });
 });

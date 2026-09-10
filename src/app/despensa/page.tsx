@@ -9,19 +9,22 @@ export default function DespensaPage() {
   return (
     <PageTransition>
       <div className="mx-auto w-full max-w-lg flex-1 p-6 pb-24">
-        <header className="mb-6">
-          <Link
-            href="/"
-            aria-label="Volver al inicio"
-            className="inline-flex items-center gap-1 text-sm text-text-secondary hover:underline"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Inicio
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold">Mi despensa</h1>
-          <p className="text-sm text-text-secondary">
-            Tu catálogo personal. Se alimenta de lo que agregás a tus listas.
-          </p>
+        <header className="mb-6 flex items-start justify-between gap-4">
+          <div className="flex items-start gap-1">
+            <Link
+              href="/"
+              aria-label="Volver al inicio"
+              className="mt-1 rounded-lg p-0.5 text-primary transition-colors hover:opacity-80"
+            >
+              <ArrowLeft className="h-6 w-6" aria-hidden />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-primary">Mi despensa</h1>
+              <p className="mt-1 text-sm text-text-secondary">
+                Tu catálogo personal. Se alimenta de lo que agregás a tus listas.
+              </p>
+            </div>
+          </div>
         </header>
         <PantryEditor />
       </div>

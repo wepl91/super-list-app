@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { GripVertical, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
-import type { DraggableAttributes } from "@dnd-kit/core";
+import { Pencil, Trash2 } from "lucide-react";
 import { useListStore } from "@/lib/stores/listStore";
 import { usePantry } from "@/lib/stores/pantryStore";
 import { useItemSwipe } from "@/hooks/useItemSwipe";
@@ -10,15 +9,6 @@ import { haptic } from "@/lib/haptics";
 import { normalizeProductName } from "@/lib/productNames";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import type { ListItem } from "@/lib/types";
-
-export interface ListItemDrag {
-  attributes: DraggableAttributes;
-  listeners: Record<string, unknown> | undefined;
-  setNodeRef: (el: HTMLElement | null) => void;
-  transform: { x: number; y: number; scaleX: number; scaleY: number } | null;
-  transition?: string;
-  isDragging: boolean;
-}
 
 interface ListItemRowProps {
   listId: string;
@@ -36,10 +26,6 @@ interface ListItemRowProps {
   isReadOnly?: boolean;
   /** Modo foco: fila completa clickeable, controles más grandes, háptica. */
   focusMode?: boolean;
-  /** Callback de ref a la raíz de la fila (para combinar el setNodeRef del sortable). */
-  rootRef?: (el: HTMLElement | null) => void;
-  /** Props de `useSortable` del wrapper: habilita el handle de arrastre. */
-  drag?: ListItemDrag;
 }
 
 function quantityLabel(item: ListItem): string {
@@ -56,16 +42,16 @@ export default function ListItemRow({
   onSave,
   isReadOnly = false,
   focusMode = false,
-  rootRef,
-  drag,
 }: ListItemRowProps) {
   const toggleItem = useListStore((s) => s.toggleItem);
-  const togglePin = useListStore((s) => s.togglePin);
   const deleteItem = useListStore((s) => s.deleteItem);
 
   const products = usePantry((s) => s.products);
   const product = useMemo(
-    () => products.find((p) => p.name === normalizeProductName(item.name)) ?? null,
+    () =>
+      products.find(
+        (p) => normalizeProductName(p.name) === normalizeProductName(item.name)
+      ) ?? null,
     [products, item.name]
   );
 
@@ -89,10 +75,10 @@ export default function ListItemRow({
   }
 
   // Swipe: derecha completa un pendiente; izquierda desmarca un completado.
-  // El gesto se ignora si arranca en un control (checkbox, botones, handle).
+  // El gesto se ignora si arranca en un control (checkbox, botones).
   const swipe = useItemSwipe({
     disabled: isReadOnly,
-    ignore: (target) => Boolean(target.closest("button, input, [data-drag-handle]")),
+    ignore: (target) => Boolean(target.closest("button, input")),
     onSwipeRight: () => {
       if (!item.completed) activateToggle();
     },
@@ -101,23 +87,15 @@ export default function ListItemRow({
     },
   });
 
-  function setRootRef(el: HTMLElement | null) {
-    rootRef?.(el);
-    drag?.setNodeRef(el);
-  }
-
   const reduceMotion =
     typeof window !== "undefined" &&
     !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-  const dragging = !!drag?.isDragging && !!drag?.transform;
   const transform = reduceMotion
     ? undefined
-    : dragging
-      ? `translate3d(${drag!.transform!.x}px, ${drag!.transform!.y}px, 0)`
-      : swipe.swiping
-        ? `translate3d(${swipe.offsetX}px, 0, 0)`
-        : undefined;
+    : swipe.swiping
+      ? `translate3d(${swipe.offsetX}px, 0, 0)`
+      : undefined;
 
   if (editing) {
     return (
@@ -191,38 +169,18 @@ export default function ListItemRow({
 
   return (
     <li
-      ref={setRootRef}
       onPointerDown={swipe.onPointerDown}
       style={{
         touchAction: "pan-y",
         transform,
-        transition: dragging
-          ? drag.transition
-          : swipe.swiping
-            ? "none"
-            : "transform 0.2s ease-out",
+        transition: swipe.swiping ? "none" : "transform 0.2s ease-out",
       }}
       className={`flex items-center gap-3 rounded-xl border border-zinc-200 bg-surface dark:border-zinc-700 ${
         deleting ? "pointer-events-none opacity-0 transition-opacity duration-150" : ""
       } ${item.completed ? "animate-row-pop" : ""} ${
-        dragging ? "z-10 shadow-lg ring-2 ring-primary/50 opacity-90" : ""
-      } ${focusMode ? "p-4 focus-within:ring-2 focus-within:ring-primary" : "p-3"}`}
+        focusMode ? "p-4 focus-within:ring-2 focus-within:ring-primary" : "p-3"
+      }`}
     >
-      {drag && !isReadOnly && (
-        <button
-          type="button"
-          data-drag-handle
-          aria-label={`Reordenar ${item.name}`}
-          title="Reordenar"
-          {...drag.attributes}
-          {...drag.listeners}
-          className={`rounded-lg touch-none text-text-secondary hover:bg-zinc-100 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800 ${
-            focusMode ? "p-3" : "p-2"
-          }`}
-        >
-          <GripVertical className={focusMode ? "h-6 w-6" : "h-4 w-4"} aria-hidden />
-        </button>
-      )}
       <label
         className={`flex min-w-0 flex-1 cursor-pointer items-center gap-3 ${
           isReadOnly ? "cursor-not-allowed" : ""
@@ -261,26 +219,6 @@ export default function ListItemRow({
       <div className={`flex shrink-0 gap-1 ${focusMode ? "gap-2" : ""}`}>
         {!isReadOnly && (
           <>
-            <button
-              type="button"
-              onClick={() => togglePin(listId, item.id)}
-              aria-pressed={!!item.pinned}
-              aria-label={item.pinned ? `Desfijar ${item.name}` : `Fijar ${item.name}`}
-              title={item.pinned ? "Desfijar" : "Fijar"}
-              className={`rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                focusMode ? "p-3" : "p-2"
-              } ${
-                item.pinned
-                  ? "text-primary"
-                  : "text-text-secondary hover:bg-zinc-100 hover:text-primary dark:hover:bg-zinc-800"
-              }`}
-            >
-              {item.pinned ? (
-                <PinOff className={focusMode ? "h-6 w-6" : "h-4 w-4"} aria-hidden />
-              ) : (
-                <Pin className={focusMode ? "h-6 w-6" : "h-4 w-4"} aria-hidden />
-              )}
-            </button>
             <button
               type="button"
               onClick={onEdit}

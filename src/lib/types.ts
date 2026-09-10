@@ -6,8 +6,6 @@ export interface ListItem {
   unit?: string;
   completed: boolean;
   position: number;
-  /** Fijado arriba: data de la lista, se sincroniza con los colaboradores. */
-  pinned?: boolean;
   createdAt: number;
   updatedAt: number;
 }

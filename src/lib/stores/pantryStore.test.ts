@@ -7,11 +7,11 @@ beforeEach(() => {
 });
 
 describe("pantryStore", () => {
-  it("recordItem crea un producto con count 1", () => {
+  it("recordItem crea un producto conservando el casing con count 1", () => {
     usePantry.getState().recordItem(" Leche ");
     expect(usePantry.getState().products).toHaveLength(1);
     expect(usePantry.getState().products[0]).toMatchObject({
-      name: "leche",
+      name: "Leche",
       count: 1,
     });
   });
@@ -33,7 +33,7 @@ describe("pantryStore", () => {
     upsertProduct({ id: existing.id, name: "Huevos frescos", emoji: "🥚", aisle: "granja" });
     expect(usePantry.getState().products[0]).toMatchObject({
       id: existing.id,
-      name: "huevos frescos",
+      name: "Huevos frescos",
       emoji: "🥚",
       aisle: "granja",
       count: 1,

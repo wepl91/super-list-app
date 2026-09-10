@@ -45,7 +45,7 @@ describe("PantryEditor", () => {
     await user.type(within(dialog).getByLabelText("Nombre"), "Arroz");
     await user.type(within(dialog).getByLabelText(/Emoji/), "🍚");
     await user.click(within(dialog).getByRole("button", { name: "Guardar" }));
-    expect(screen.getByText("arroz")).toBeInTheDocument();
+    expect(screen.getByText("Arroz")).toBeInTheDocument();
     expect(screen.getByText("🍚")).toBeInTheDocument();
     expect(usePantry.getState().products).toHaveLength(1);
   });
@@ -58,8 +58,8 @@ describe("PantryEditor", () => {
     await user.clear(screen.getByLabelText("Nombre"));
     await user.type(screen.getByLabelText("Nombre"), "Leche entera");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
-    expect(usePantry.getState().products[0].name).toBe("leche entera");
-    expect(screen.getByText("leche entera")).toBeInTheDocument();
+    expect(usePantry.getState().products[0].name).toBe("Leche entera");
+    expect(screen.getByText("Leche entera")).toBeInTheDocument();
   });
 
   it("no guarda con nombre vacío en el diálogo", async () => {

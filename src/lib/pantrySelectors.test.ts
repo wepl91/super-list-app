@@ -64,9 +64,16 @@ describe("evictToCap", () => {
 });
 
 describe("recordProduct", () => {
-  it("crea el producto con count 1 ante un nombre nuevo", () => {
+  it("crea el producto conservando el casing con count 1", () => {
     const next = recordProduct([], " Leche ");
-    expect(next[0]).toMatchObject({ name: "leche", count: 1 });
+    expect(next[0]).toMatchObject({ name: "Leche", count: 1 });
+  });
+
+  it("deduplica por clave normalizada sin pisar el casing original", () => {
+    const once = recordProduct([], "Leche");
+    const twice = recordProduct(once, "LECHE");
+    expect(twice).toHaveLength(1);
+    expect(twice[0]).toMatchObject({ name: "Leche", count: 2 });
   });
 
   it("incrementa count y lastUsedAt si ya existe (deduplicado)", () => {
@@ -103,7 +110,12 @@ describe("upsertProductEntry", () => {
 
   it("crea uno nuevo si no existe (count 0, es manual)", () => {
     const next = upsertProductEntry([], { name: "Huevos", brand: "Campo" });
-    expect(next[0]).toMatchObject({ name: "huevos", brand: "Campo", count: 0 });
+    expect(next[0]).toMatchObject({ name: "Huevos", brand: "Campo", count: 0 });
+  });
+
+  it("colapsa espacios interiores pero conserva el casing", () => {
+    const next = upsertProductEntry([], { name: "  la  serenísima " });
+    expect(next[0].name).toBe("la serenísima");
   });
 
   it("nombre vacío es no-op", () => {

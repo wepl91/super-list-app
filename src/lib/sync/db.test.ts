@@ -23,7 +23,6 @@ const itemRow: ListItemRow = {
   unit: null,
   completed: false,
   position: 3,
-  pinned: false,
   created_by: null,
   created_at: "2025-01-01T00:00:00Z",
   updated_at: "2025-01-02T00:00:00Z",
@@ -76,21 +75,15 @@ describe("toList", () => {
 });
 
 describe("toListItem / toListItems", () => {
-  it("mapea pinned y las fechas a ms", () => {
+  it("mapea las fechas a ms", () => {
     const item = toListItem(itemRow);
     expect(item.id).toBe("i1");
-    expect(item.pinned).toBe(false);
     expect(item.createdAt).toBe(new Date("2025-01-01T00:00:00Z").getTime());
   });
 
-  it("short-circuita un pinned true del server", () => {
-    expect(toListItem({ ...itemRow, pinned: true }).pinned).toBe(true);
-  });
-
   it("mapea una lista de filas", () => {
-    const items = toListItems([itemRow, { ...itemRow, id: "i2", pinned: true }]);
+    const items = toListItems([itemRow, { ...itemRow, id: "i2" }]);
     expect(items).toHaveLength(2);
-    expect(items[1].pinned).toBe(true);
     expect(items[1].id).toBe("i2");
   });
 });
