@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import BarcodeScannerButton from "@/components/BarcodeScannerButton";
 import VoiceDictationButton from "@/components/VoiceDictationButton";
 import { haptic } from "@/lib/haptics";
+import { isRawBarcode } from "@/lib/barcodes";
+import { useBarcodes } from "@/lib/stores/barcodeStore";
 import { useListStore } from "@/lib/stores/listStore";
 import type { NewItemInput } from "@/lib/stores/listStore";
 
@@ -27,6 +30,7 @@ export default function AddItemForm({
   const [quantity, setQuantity] = useState(1);
   const [unit, setUnit] = useState("");
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const [entering, setEntering] = useState(true);
 
@@ -53,11 +57,24 @@ export default function AddItemForm({
     setDescription("");
     setQuantity(1);
     setUnit("");
+    setLastScannedCode(null);
+  }
+
+  function handleDetected(code: string) {
+    const known = useBarcodes.getState().getBarcodeName(code);
+    setName(known ?? code);
+    setLastScannedCode(code);
   }
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !listId) return;
+    const code = lastScannedCode;
+    // Aprendizaje: si el usuario agregó el item con un nombre de producto
+    // (distinto del código cruto), persistimos el mapeo código → nombre.
+    if (code && !isRawBarcode(name, code)) {
+      useBarcodes.getState().setBarcodeName(code, name.trim());
+    }
     const input: NewItemInput = { name, description, quantity, unit };
     addItem(listId, input);
     if (focusMode) haptic();
@@ -103,6 +120,7 @@ export default function AddItemForm({
               onFinal={setName}
               onError={(msg) => setVoiceError(msg)}
             />
+            <BarcodeScannerButton onDetect={handleDetected} />
           </div>
           <button
             type="submit"
@@ -131,6 +149,7 @@ export default function AddItemForm({
               onFinal={setName}
               onError={(msg) => setVoiceError(msg)}
             />
+            <BarcodeScannerButton onDetect={handleDetected} />
           </div>
           <label htmlFor="item-desc" className="sr-only">
             Descripción (opcional)

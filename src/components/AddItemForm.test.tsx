@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AddItemForm from "@/components/AddItemForm";
 
@@ -33,12 +33,44 @@ vi.mock("@/components/VoiceDictationButton", () => ({
   ),
 }));
 
+const barcodeScanner = vi.hoisted(() => {
+  let onDetect: ((code: string) => void) | null = null;
+  return {
+    __wire: (cb: (code: string) => void) => {
+      onDetect = cb;
+    },
+    __scan: (code: string) => {
+      onDetect?.(code);
+    },
+    useBarcodeScanner: (opts: { onDetect: (code: string) => void }) => {
+      barcodeScanner.__wire(opts.onDetect);
+      return {
+        supported: true,
+        status: "idle",
+        error: null,
+        open: vi.fn(),
+        close: vi.fn(),
+        clearError: vi.fn(),
+        videoRef: { current: null },
+      };
+    },
+  };
+});
+
+vi.mock("@/lib/useBarcodeScanner", () => ({
+  useBarcodeScanner: barcodeScanner.useBarcodeScanner,
+}));
+
+import { useBarcodes } from "@/lib/stores/barcodeStore";
+
 describe("AddItemForm", () => {
   const onClose = vi.fn<() => void>();
   const onExited = vi.fn<() => void>();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    useBarcodes.setState({ codes: {} });
+    localStorage.clear();
   });
 
   it("en modo normal muestra nombre, descripción, cantidad y unidad", () => {
@@ -187,5 +219,61 @@ describe("AddItemForm", () => {
       quantity: 1,
       unit: "",
     });
+  });
+
+  it("al escanear un código sin nombre conocido completa el campo con el código", async () => {
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.click(
+      screen.getByRole("button", { name: "Escanear código de barras" })
+    );
+    await act(async () => barcodeScanner.__scan("7790070239437"));
+    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue(
+      "7790070239437"
+    );
+  });
+
+  it("al escanear un código con nombre aprendido completa con el nombre", async () => {
+    useBarcodes.getState().setBarcodeName("7790070239437", "Leche");
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.click(
+      screen.getByRole("button", { name: "Escanear código de barras" })
+    );
+    await act(async () => barcodeScanner.__scan("7790070239437"));
+    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("Leche");
+  });
+
+  it("al agregar un item escaneado y renombrado persiste el mapeo código → nombre", async () => {
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.click(
+      screen.getByRole("button", { name: "Escanear código de barras" })
+    );
+    await act(async () => barcodeScanner.__scan("123"));
+    const input = screen.getByLabelText("Nombre del elemento");
+    await user.clear(input);
+    await user.type(input, "Leche");
+    await user.click(screen.getByRole("button", { name: "Añadir" }));
+
+    expect(useBarcodes.getState().getBarcodeName("123")).toBe("Leche");
+    expect(addItem).toHaveBeenCalledWith("l1", {
+      name: "Leche",
+      description: "",
+      quantity: 1,
+      unit: "",
+    });
+  });
+
+  it("no persiste el mapeo si el nombre sigue siendo el código cruto", async () => {
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.click(
+      screen.getByRole("button", { name: "Escanear código de barras" })
+    );
+    await act(async () => barcodeScanner.__scan("456"));
+    await user.click(screen.getByRole("button", { name: "Añadir" }));
+
+    expect(useBarcodes.getState().getBarcodeName("456")).toBeUndefined();
   });
 });
