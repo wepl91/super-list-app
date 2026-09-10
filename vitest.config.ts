@@ -24,6 +24,7 @@ export default defineConfig({
         "src/lib/theme.tsx",
         "src/lib/useScreenWakeLock.ts",
         "src/lib/barcodes.ts",
+        "src/lib/barcodeLookup.ts",
         "src/lib/useBarcodeScanner.ts",
         "src/lib/stores/preferencesStore.ts",
         "src/lib/stores/barcodeStore.ts",

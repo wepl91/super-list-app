@@ -61,6 +61,34 @@ vi.mock("@/lib/useBarcodeScanner", () => ({
   useBarcodeScanner: barcodeScanner.useBarcodeScanner,
 }));
 
+const barcodeLookup = vi.hoisted(() => {
+  let deferredPromise: Promise<string | null> | null = null;
+  let resolveDeferred: ((v: string | null) => void) | null = null;
+  let immediate: string | null = null;
+  return {
+    __setResult: (name: string | null) => {
+      deferredPromise = null;
+      resolveDeferred = null;
+      immediate = name;
+    },
+    __defer: () => {
+      immediate = null;
+      deferredPromise = new Promise<string | null>((resolve) => {
+        resolveDeferred = resolve;
+      });
+      return deferredPromise;
+    },
+    __resolve: (name: string | null) => {
+      resolveDeferred?.(name);
+    },
+    lookupProductName: () => deferredPromise ?? Promise.resolve(immediate),
+  };
+});
+
+vi.mock("@/lib/barcodeLookup", () => ({
+  lookupProductName: barcodeLookup.lookupProductName,
+}));
+
 import { useBarcodes } from "@/lib/stores/barcodeStore";
 
 describe("AddItemForm", () => {
@@ -71,6 +99,7 @@ describe("AddItemForm", () => {
     vi.clearAllMocks();
     useBarcodes.setState({ codes: {} });
     localStorage.clear();
+    barcodeLookup.__setResult(null);
   });
 
   it("en modo normal muestra nombre, descripción, cantidad y unidad", () => {
@@ -275,5 +304,42 @@ describe("AddItemForm", () => {
     await user.click(screen.getByRole("button", { name: "Añadir" }));
 
     expect(useBarcodes.getState().getBarcodeName("456")).toBeUndefined();
+  });
+
+  it("con el lookup online completa el campo con el nombre y cachea el mapeo", async () => {
+    barcodeLookup.__setResult("Leche descremada");
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.click(
+      screen.getByRole("button", { name: "Escanear código de barras" })
+    );
+    await act(async () => barcodeScanner.__scan("7790070239437"));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Nombre del elemento")).toHaveValue(
+        "Leche descremada"
+      )
+    );
+    expect(useBarcodes.getState().getBarcodeName("7790070239437")).toBe(
+      "Leche descremada"
+    );
+  });
+
+  it("si el usuario ya editó el nombre, el lookup no lo pisa ni guarda el mapeo", async () => {
+    barcodeLookup.__defer();
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.click(
+      screen.getByRole("button", { name: "Escanear código de barras" })
+    );
+    await act(async () => barcodeScanner.__scan("7790070239437"));
+    const input = screen.getByLabelText("Nombre del elemento");
+    await user.clear(input);
+    await user.type(input, "Huevos");
+
+    await act(async () => barcodeLookup.__resolve("Leche descremada"));
+
+    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("Huevos");
+    expect(useBarcodes.getState().getBarcodeName("7790070239437")).toBeUndefined();
   });
 });

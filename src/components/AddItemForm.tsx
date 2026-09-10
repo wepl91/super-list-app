@@ -5,6 +5,7 @@ import BarcodeScannerButton from "@/components/BarcodeScannerButton";
 import VoiceDictationButton from "@/components/VoiceDictationButton";
 import { haptic } from "@/lib/haptics";
 import { isRawBarcode } from "@/lib/barcodes";
+import { lookupProductName } from "@/lib/barcodeLookup";
 import { useBarcodes } from "@/lib/stores/barcodeStore";
 import { useListStore } from "@/lib/stores/listStore";
 import type { NewItemInput } from "@/lib/stores/listStore";
@@ -64,6 +65,18 @@ export default function AddItemForm({
     const known = useBarcodes.getState().getBarcodeName(code);
     setName(known ?? code);
     setLastScannedCode(code);
+    if (known) return;
+    // Código desconocido localmente: intentamos el lookup online. Si trae
+    // nombre y el usuario no lo reemplazó todavía, lo usamos y lo cacheamos
+    // para que la próxima vez sea instantáneo (y funcione offline).
+    void lookupProductName(code).then((name) => {
+      if (!name) return;
+      setName((current) => {
+        if (!isRawBarcode(current, code)) return current;
+        useBarcodes.getState().setBarcodeName(code, name.trim());
+        return name;
+      });
+    });
   }
 
   function handleAdd(e: React.FormEvent) {

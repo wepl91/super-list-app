@@ -1,7 +1,7 @@
 # Escáner de códigos de barras para agregar elementos de lista
 
 **Estado**: `implemented`
-**Versión**: v1
+**Versión**: v2
 **Fecha**: 2026-09-09
 
 ## Contexto / Objetivo
@@ -52,6 +52,10 @@ Edge; **no** Safari ni Firefox):
   - Si el código tiene **nombre conocido** en el mapa local → se completa `setName(nombre)`.
   - Si **no** → se deja el **código crudo** como texto en el campo para que el
     usuario lo renombre (o complete con lo que escriba).
+  - **Lookup online (v2)**: si el código es desconocido localmente, se consulta
+    **Open Food Facts** (`world.openfoodfacts.org/api/v2/product/{code}.json`);
+    si responde con nombre y el campo sigue siendo el código (no fue editado),
+    se completa con el nombre y se cachea en el mapa local.
   - El overlay se cierra tras la primera detección exitosa (con cooldown para no
     re-detectar el mismo código en el mismo frame/segundo).
 - [x] RF-4: **No auto-agrega** el elemento: el nombre queda en el campo listo para
@@ -74,6 +78,10 @@ Edge; **no** Safari ni Firefox):
 - RNF-2: Todo **local-first y offline**: el mapa `código → nombre` se persiste en
   localStorage (patrón zustand `persist` del proyecto) y **no se sincroniza**
   entre cuentas/dispositivos.
+- RNF-2b (v2): el **lookup online** solo ocurre cuando el código es desconocido
+  localmente y no hay nombre en cache; el resultado se guarda en el mapa local.
+  Ante fallo de red/HTTP o producto inexistente, el flujo continúa con el código
+  cruto (offline-first, sin romper). Sin API key ni costo.
 - RNF-3: `npm test`, `npm run lint`, `tsc --noEmit` y `next build` pasan.
 - RNF-4: Cobertura: los archivos nuevos entran al `include` de `vitest.config.ts`
   y cada uno tiene su test (regla de `specs/test-coverage.md`).
@@ -125,12 +133,19 @@ Edge; **no** Safari ni Firefox):
   `VoiceDictationButton`):
   - Estado `lastScannedCode: string | null`.
   - `handleDetected(code)`: `setName(barcodeStore.getState().getBarcodeName(code) ?? code)`;
-    guarda `lastScannedCode = code` (se limpia en `resetForm`).
+    guarda `lastScannedCode = code` (se limpia en `resetForm`). Si el código es
+    desconocido, dispara `lookupProductName(code)` (Open Food Facts): al
+    resolver, completa el campo solo si sigue siendo el código cruto y persiste
+    el mapeo en `barcodeStore`.
   - En `handleAdd`: antes de `addItem`, si `lastScannedCode` existe y
     `isRawBarcode(name, lastScannedCode)` es false (el usuario puso/renombró un
     nombre de producto), `setBarcodeName(lastScannedCode, name.trim())`.
   - El overlay se cierra dentro de `BarcodeScannerButton` tras detectar (los
     errores se muestran igual que `voiceError`, abajo del form).
+- **`src/lib/barcodeLookup.ts`** (nuevo, v2): `lookupProductName(code, fetcher?, timeout?)`
+  — consulta `world.openfoodfacts.org/api/v2/product/{code}.json` con timeout y
+  `AbortController`; devuelve el nombre (con fallback a `product_name_es`,
+  `generic_name`) o `null` ante cualquier fallo. Inyectable para testear.
 - **`vitest.config.ts`**: agregar al `include` de coverage:
   `src/lib/barcodes.ts`, `src/lib/stores/barcodeStore.ts`,
   `src/lib/useBarcodeScanner.ts`, `src/components/BarcodeScannerButton.tsx`.
@@ -177,6 +192,11 @@ Edge; **no** Safari ni Firefox):
   guardado del mapeo al agregar) + extender `AddItemForm.test.tsx`.
 - [x] T-6: Agregar los 4 archivos al `include` de `vitest.config.ts`.
 - [x] T-7: Verificar `npm test`/`test:coverage`, `lint`, `tsc --noEmit`, `next build`.
+- [x] T-8 (v2): `src/lib/barcodeLookup.ts` + test (Open Food Facts, timeout,
+  fallback de campos, `null` ante fallos) e incluirla en coverage.
+- [x] T-9 (v2): Integrar el lookup en `AddItemForm.handleDetected` (cache,
+  respeto a la edición del usuario) + tests (lookup OK cachea, lookup no pisa
+  la edición).
 
 ## Notas / decisiones
 
@@ -188,8 +208,11 @@ Edge; **no** Safari ni Firefox):
 - **Aprendizaje del mapeo**: el mapa se guarda **solo localmente** (no se
   sincroniza entre cuentas/dispositivos) por diseño local-first/offline; un
   futuro spec podría sincronizarlo a Supabase si el dueño lo pide.
-- **No se envía nada a la red**: el vídeo vive en memoria; la cámara se libera al
-  cerrar. Sin servicios de búsqueda de productos (descartadas APIs de pago).
+- **No se envía nada a la red mientras se escanea**: el vídeo vive en memoria;
+  la cámara se libera al cerrar. La única llamada de red es el **lookup opcional
+  de Open Food Facts** (API libre, sin key, buena cobertura EAN/UPC) para
+  códigos desconocidos; se cachea el resultado en local. El lookup no pisa una
+  edición del usuario (si el campo ya no es el código cruto, se ignora).
 - **`BarcodeDetector` es experimental/Chromium-only**: en Chrome desktop el
   formulario puede requerir flag según versión; el usuario probado es Chrome
   Android, donde funciona sin configuración. Safari/Firefox quedan con la UI
