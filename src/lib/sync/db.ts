@@ -27,7 +27,6 @@ export interface ListItemRow {
   unit: string | null;
   completed: boolean;
   position: number;
-  pinned: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -48,7 +47,6 @@ export function toListItems(rows: ListItemRow[]): ListItem[] {
     unit: r.unit ?? undefined,
     completed: r.completed,
     position: r.position,
-    pinned: !!r.pinned,
     createdAt: new Date(r.created_at).getTime(),
     updatedAt: new Date(r.updated_at).getTime(),
   }));
@@ -63,7 +61,6 @@ export function toListItem(row: ListItemRow): ListItem {
     unit: row.unit ?? undefined,
     completed: row.completed,
     position: row.position,
-    pinned: !!row.pinned,
     createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
   };

@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import VoiceDictationButton from "@/components/VoiceDictationButton";
+import PantryChips from "@/components/PantryChips";
 import { haptic } from "@/lib/haptics";
 import { useListStore } from "@/lib/stores/listStore";
+import { usePantry } from "@/lib/stores/pantryStore";
 import type { NewItemInput } from "@/lib/stores/listStore";
 
 interface AddItemFormProps {
@@ -61,6 +63,7 @@ export default function AddItemForm({
     const input: NewItemInput = { name, description, quantity, unit };
     addItem(listId, input);
     if (focusMode) haptic();
+    usePantry.getState().recordItem(name);
     resetForm();
   }
 
@@ -108,6 +111,7 @@ export default function AddItemForm({
               onError={(msg) => setVoiceError(msg)}
             />
           </div>
+          <PantryChips name={name} onPick={setName} />
           <button
             type="submit"
             className="rounded-lg bg-primary px-4 py-3 text-lg text-white hover:opacity-90"
@@ -140,6 +144,7 @@ export default function AddItemForm({
               onError={(msg) => setVoiceError(msg)}
             />
           </div>
+          <PantryChips name={name} onPick={setName} />
           <label htmlFor="item-desc" className="sr-only">
             Descripción (opcional)
           </label>

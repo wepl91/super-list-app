@@ -5,7 +5,6 @@ import { persist } from "zustand/middleware";
 import type { List, ListItem, ListColor } from "../types";
 import { getSupabase } from "../supabase/client";
 import { defaultColorFor, normalizeEmoji } from "../listIdentity";
-import { applyTogglePin, reorderItems as reorderItemsPure } from "../itemsOrder";
 import {
   applyItemsMutation,
   deleteListRemote,
@@ -73,8 +72,6 @@ interface ListState {
   addItem: (listId: string, input: NewItemInput) => void;
   updateItem: (listId: string, itemId: string, input: Partial<NewItemInput>) => void;
   toggleItem: (listId: string, itemId: string) => void;
-  togglePin: (listId: string, itemId: string) => void;
-  reorderItems: (listId: string, activeId: string, overId: string) => void;
   deleteItem: (listId: string, itemId: string) => void;
   sortItems: (listId: string) => void;
   deleteCompletedItems: (listId: string) => void;
@@ -103,7 +100,6 @@ function makeItem(input: NewItemInput, position: number): ListItem {
     unit: input.unit?.trim() || undefined,
     completed: false,
     position,
-    pinned: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -511,45 +507,6 @@ export const useListStore = create<ListState>()(
         }));
         if (updated) {
           pushItemToRemote(listId, { type: "upsert", item: updated }, get().serverUserId);
-        }
-      },
-
-      togglePin: (listId, itemId) => {
-        reportListChange(listId);
-        let updated: ListItem | null = null;
-        set((state) => ({
-          lists: mapList(state.lists, listId, (list) => {
-            const items = applyTogglePin(list.items, itemId);
-            updated = items.find((i) => i.id === itemId) ?? null;
-            return items === list.items ? list : bumpList({ ...list, items });
-          }),
-        }));
-        if (updated) {
-          pushItemToRemote(listId, { type: "upsert", item: updated }, get().serverUserId);
-        }
-      },
-
-      reorderItems: (listId, activeId, overId) => {
-        reportListChange(listId);
-        let changed = false;
-        let reordered: ListItem[] = [];
-        set((state) => ({
-          lists: mapList(state.lists, listId, (list) => {
-            const next = reorderItemsPure(list.items, activeId, overId);
-            if (next === list.items) return list;
-            changed = true;
-            reordered = next;
-            return bumpList({ ...list, items: next });
-          }),
-        }));
-        if (changed && reordered.length) {
-          const supabase = getSupabase();
-          const userId = get().serverUserId;
-          if (supabase && userId) {
-            for (const item of reordered) {
-              pushItemToRemote(listId, { type: "upsert", item }, userId);
-            }
-          }
         }
       },
 

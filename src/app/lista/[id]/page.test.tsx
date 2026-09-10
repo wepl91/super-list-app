@@ -54,21 +54,17 @@ vi.mock("@/app/supabase-actions", () => ({
   getSharedMemberEmails: vi.fn(() => Promise.resolve([])),
 }));
 
-vi.mock("@dnd-kit/sortable", () => ({
-  useSortable: () => ({
-    attributes: {},
-    listeners: {},
-    setNodeRef: () => {},
-    transform: null,
-    transition: undefined,
-    isDragging: false,
-  }),
-  SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  verticalListSortingStrategy: () => {},
-  sortableKeyboardCoordinates: () => null,
+vi.mock("@/components/ListOptionsMenu", () => ({
+  default: ({
+    canCustomize,
+    canShare,
+  }: {
+    canCustomize?: boolean;
+    canShare?: boolean;
+  }) => (
+    <div data-testid="list-options" data-customize={String(!!canCustomize)} data-share={String(!!canShare)} />
+  ),
 }));
-
-vi.mock("@/components/ListOptionsMenu", () => ({ default: () => null }));
 vi.mock("@/components/AuthGateCta", () => ({
   default: () => <div>AuthGateCta</div>,
 }));
@@ -108,21 +104,22 @@ describe("ListDetailPage (smoke)", () => {
     expect(emoji).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("el botón Personalizar lista aparece para el owner", async () => {
+  it("el menú de opciones habilita Personalizar solo para el owner", async () => {
+    authState.user = { id: "u1" };
     await renderPage();
-    expect(
-      screen.getByRole("button", { name: "Personalizar lista" })
-    ).toBeInTheDocument();
-    expect(screen.getByText("🍎")).toBeInTheDocument();
+    expect(screen.getByTestId("list-options")).toHaveAttribute(
+      "data-customize",
+      "true"
+    );
   });
 
-  it("el botón Personalizar lista no aparece para un editor/guest", async () => {
+  it("el menú de opciones no permite Personalizar para un editor/guest", async () => {
     authState.user = { id: "u2" };
     await renderPage();
-    expect(
-      screen.queryByRole("button", { name: "Personalizar lista" })
-    ).not.toBeInTheDocument();
-    expect(screen.getByText("🍎")).toBeInTheDocument();
+    expect(screen.getByTestId("list-options")).toHaveAttribute(
+      "data-customize",
+      "false"
+    );
   });
 
   it("muestra el FAB cerrado y sin form al navegar con sesión", async () => {
@@ -222,24 +219,6 @@ describe("ListDetailPage (smoke)", () => {
 
     await user.click(screen.getByRole("button", { name: "Todo" }));
     expect(screen.getByText("Leche")).toBeInTheDocument();
-    expect(screen.getByText("Harina")).toBeInTheDocument();
-  });
-
-  it("los fijados quedan al tope y sobreviven al filtro", async () => {
-    const user = userEvent.setup();
-    listState.lists[0].items = [
-      { id: "i1", name: "Leche", completed: false, position: 0, pinned: true, quantity: 1, createdAt: 0, updatedAt: 0 },
-      { id: "i2", name: "Harina", completed: true, position: 1, quantity: 1, createdAt: 0, updatedAt: 0 },
-      { id: "i3", name: "Arroz", completed: false, position: 2, quantity: 1, createdAt: 0, updatedAt: 0 },
-    ] as never;
-    await renderPage();
-
-    expect(screen.getByText("Fijados (1)")).toBeInTheDocument();
-    expect(screen.getByText("Leche")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Tachados" }));
-    expect(screen.getByText("Leche")).toBeInTheDocument();
-    expect(screen.queryByText("Arroz")).not.toBeInTheDocument();
     expect(screen.getByText("Harina")).toBeInTheDocument();
   });
 

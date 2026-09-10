@@ -4,6 +4,8 @@
 **Versión**: v1
 **Fecha**: 2026-09-09
 
+> **Alcance final (decisión del dueño tras QA, 2026-09-09)**: se **descartaron** el drag & drop de items (long-press, `ListItemSortable`, `itemsOrder.ts` y la sección "Fijados") y el **fijar** (botón pin). El pin no operaba de forma fiable sobre la fila y el drag agregaba fricción sin valor percibido; el reorden de items queda **solo alfabético** (`sortItems`). **Se mantienen**: swipe para completar/desmarcar (RF-1), chips de filtro (RF-5) y su convivencia con el modo foco y `hideCompleted`. La limpieza (código, tests, migración `pinned`, `schema.sql` y tipos) quedó hecha en la misma entrega.
+
 ## Contexto / Objetivo
 
 El **detalle de lista** (`src/app/lista/[id]/page.tsx`, `src/components/ListItemRow.tsx`) es la pantalla más usada del flujo de compra. Hoy:

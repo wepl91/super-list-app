@@ -92,17 +92,19 @@ export function parseColor(color: string | null | undefined): ListColor | undefi
 }
 
 /**
- * Clases "acento" aplicadas al contenedor (borde izquierdo). Los strings son
- * literales para que Tailwind no purgue las clases (nunca interpolados).
+ * Valor hex del color (para estilos inline). El borde izquierdo del `ListCard`
+ * se pinta así para no depender del orden de clase de Tailwind: `border-color`
+ * de `border-zinc-200` y `border-emerald-500` compiten y gana el que el CSS
+ * compilado emite último (inline gana siempre).
  */
-export function colorBorderClass(color: ListColor): string {
+export function colorHex(color: ListColor): string {
   return {
-    emerald: "border-l-4 border-emerald-500",
-    sky: "border-l-4 border-sky-500",
-    amber: "border-l-4 border-amber-500",
-    rose: "border-l-4 border-rose-500",
-    violet: "border-l-4 border-violet-500",
-    teal: "border-l-4 border-teal-500",
+    emerald: "#10b981",
+    sky: "#0ea5e9",
+    amber: "#f59e0b",
+    rose: "#f43f5e",
+    violet: "#8b5cf6",
+    teal: "#14b8a6",
   }[color];
 }
 

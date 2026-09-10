@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import type { List } from "@/lib/types";
 import { useListStore } from "@/lib/stores/listStore";
-import { colorBorderClass, colorChipClass, effectiveColor } from "@/lib/listIdentity";
+import { colorHex, effectiveColor } from "@/lib/listIdentity";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getSharedMemberEmails } from "@/app/supabase-actions";
@@ -95,12 +95,18 @@ export default function ListCard({
     };
   }, [menuOpen]);
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: list.id, disabled: !isOwner || isReadOnly });
+
+  // Borde izquierdo con el color de identidad vía inline style: border-color de
+  // los utilities Tailwind compite (border-zinc-200 vs border-<color>-500) y el
+  // orden en el CSS compilado no es controlable; inline gana siempre.
+  const accentStyle = { borderLeftWidth: 3, borderLeftColor: colorHex(effectiveColor(list)) };
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    ...accentStyle,
   };
 
   const completed = list.items.filter((i) => i.completed).length;
@@ -112,9 +118,6 @@ export default function ListCard({
   const isShared = isOwner && (list.sharedCount ?? 0) > 0;
   const progressPct =
     list.items.length > 0 ? Math.round((completed / list.items.length) * 100) : 0;
-  const color = effectiveColor(list);
-  const accentCls = colorBorderClass(color);
-  const emojiChipCls = colorChipClass(color);
 
   function handleDelete() {
     setMenuOpen(false);
@@ -153,7 +156,7 @@ export default function ListCard({
     <li
       ref={setNodeRef}
       style={style}
-      className={`rounded-xl border border-zinc-200 bg-surface shadow-sm transition-shadow dark:border-zinc-700 ${accentCls} ${
+      className={`rounded-xl border border-zinc-200 bg-surface shadow-sm transition-shadow dark:border-zinc-700 ${
         isDragging
           ? "z-10 scale-[1.02] opacity-90 shadow-lg ring-2 ring-primary/50"
           : ""
@@ -229,7 +232,7 @@ export default function ListCard({
               {list.emoji && (
                 <span
                   aria-hidden
-                  className={`shrink-0 rounded-md px-1.5 py-0.5 text-sm leading-none ${emojiChipCls}`}
+                  className="shrink-0 rounded-md px-1.5 py-0.5 text-sm leading-none"
                 >
                   {list.emoji}
                 </span>
@@ -244,9 +247,10 @@ export default function ListCard({
                     setMembersOpen(true);
                   }}
                   aria-label={`Ver con quién se compartió ${list.name}`}
-                  className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  title="Compartida"
+                  className="shrink-0 rounded-md p-0.5 text-text-secondary transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
-                  Compartida
+                  <Users className="h-4 w-4" aria-hidden />
                 </button>
               )}
             </div>

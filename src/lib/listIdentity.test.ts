@@ -5,8 +5,8 @@ import {
   defaultColorFor,
   normalizeEmoji,
   parseColor,
-  colorBorderClass,
   colorChipClass,
+  colorHex,
   colorSwatchClass,
   effectiveColor,
 } from "./listIdentity";
@@ -71,9 +71,9 @@ describe("parseColor", () => {
 });
 
 describe("lookups de clases", () => {
-  it("colorBorderClass devuelve la clase literal esperada", () => {
-    expect(colorBorderClass("rose")).toContain("border-rose-500");
-    expect(colorBorderClass("emerald")).toContain("border-emerald-500");
+  it("colorHex devuelve el hex literal del color", () => {
+    expect(colorHex("rose")).toBe("#f43f5e");
+    expect(colorHex("emerald")).toBe("#10b981");
   });
 
   it("colorChipClass devuelve una clase de fondo (nunca de texto)", () => {

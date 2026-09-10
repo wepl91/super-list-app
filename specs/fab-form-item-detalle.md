@@ -1,6 +1,6 @@
 # FAB de "añadir elemento" en el detalle de lista (form colapsable)
 
-**Estado**: `approved`
+**Estado**: `implemented`
 **Versión**: v1
 **Fecha**: 2026-09-09
 

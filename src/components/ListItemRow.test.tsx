@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import ListItemRow from "@/components/ListItemRow";
 import { useListStore } from "@/lib/stores/listStore";
+import { usePantry } from "@/lib/stores/pantryStore";
 import type { ListItem } from "@/lib/types";
 
 vi.mock("@/components/ConfirmDialog", () => ({
@@ -47,9 +47,9 @@ describe("ListItemRow layout", () => {
     useListStore.setState({
       items: {},
       toggleItem: vi.fn(),
-      togglePin: vi.fn(),
       deleteItem: vi.fn(),
     } as never);
+    usePantry.setState({ products: [] });
   });
 
   it("RF-1: muestra la cantidad entre paréntesis junto al nombre", () => {
@@ -90,44 +90,25 @@ describe("ListItemRow layout", () => {
     expect(screen.queryByRole("button", { name: "Eliminar Leche" })).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Completar Leche" })).toBeDisabled();
   });
-});
 
-describe("ListItemRow fijación", () => {
-  const togglePin = () => useListStore.getState().togglePin as ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    useListStore.setState({
-      items: {},
-      toggleItem: vi.fn(),
-      togglePin: vi.fn(),
-      deleteItem: vi.fn(),
-    } as never);
-  });
-
-  it("muestra el botón pin con aria-pressed false para un item sin fijar", () => {
+  it("muestra el emoji del producto de la despensa cuando el nombre coincide", () => {
+    usePantry.setState({
+      products: [
+        { id: "p1", name: "leche", emoji: "🥛", count: 1, lastUsedAt: 1 },
+      ],
+    });
     renderRow();
-    const pin = screen.getByRole("button", { name: "Fijar Leche" });
-    expect(pin).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("🥛")).toBeInTheDocument();
   });
 
-  it("un item fijado muestra 'Desfijar' con aria-pressed true", () => {
-    renderRow({ pinned: true });
-    expect(screen.getByRole("button", { name: "Desfijar Leche" })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-  });
-
-  it("click en el pin llama a togglePin con list/item", async () => {
-    const user = userEvent.setup();
-    renderRow();
-    await user.click(screen.getByRole("button", { name: "Fijar Leche" }));
-    expect(togglePin()).toHaveBeenCalledWith("list-1", "item-1");
-  });
-
-  it("en read-only no hay pin (no muta listas ajenas)", () => {
-    renderRow({}, { isReadOnly: true });
-    expect(screen.queryByRole("button", { name: /Fijar|Desfijar/ })).not.toBeInTheDocument();
+  it("no muestra emoji cuando no hay producto coincidente en la despensa", () => {
+    usePantry.setState({
+      products: [
+        { id: "p1", name: "harina", emoji: "🌾", count: 1, lastUsedAt: 1 },
+      ],
+    });
+    const { container } = renderRow();
+    expect(container.textContent).not.toContain("🌾");
   });
 });
 
@@ -138,7 +119,6 @@ describe("ListItemRow swipe", () => {
     useListStore.setState({
       items: {},
       toggleItem: vi.fn(),
-      togglePin: vi.fn(),
       deleteItem: vi.fn(),
     } as never);
   });
@@ -184,11 +164,11 @@ describe("ListItemRow swipe", () => {
     expect(toggleItem()).not.toHaveBeenCalled();
   });
 
-  it("un swipe que empieza en un botón (el pin) no dispara toggle", () => {
+  it("un swipe que empieza en un botón (editar) no dispara toggle", () => {
     renderRow();
-    const pin = screen.getByRole("button", { name: "Fijar Leche" }) as HTMLElement;
+    const edit = screen.getByRole("button", { name: "Editar Leche" }) as HTMLElement;
     act(() => {
-      fireEvent.pointerDown(pin, { pointerId: 12, clientX: 0, clientY: 10 });
+      fireEvent.pointerDown(edit, { pointerId: 12, clientX: 0, clientY: 10 });
       fireEvent.pointerMove(window, { pointerId: 12, clientX: 90, clientY: 10 });
       fireEvent.pointerUp(window, { pointerId: 12, clientX: 90, clientY: 10 });
     });

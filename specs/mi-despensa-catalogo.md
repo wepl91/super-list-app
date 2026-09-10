@@ -1,6 +1,6 @@
 # Mi despensa — catálogo personal de productos frecuentes
 
-**Estado**: draft
+**Estado**: implemented
 **Versión**: v1
 **Fecha**: 2026-09-09
 
@@ -12,13 +12,13 @@ Objetivo: un **catálogo personal** (local-first) con los productos que el usuar
 
 ## Requisitos funcionales
 
-- [ ] RF-1: Store local `pantryStore` persistido (`super-list-pantry`) con productos `{ id, name, emoji?, aisle?, brand?, count, lastUsedAt }`, deduplicados por nombre normalizado.
-- [ ] RF-2: **Auto-aprendizaje**: cada alta de item desde `AddItemForm` registra el producto; si ya existe incrementa `count` y actualiza `lastUsedAt`; si es nuevo lo crea con `count: 1`. No rompe ni bloquea el alta (best-effort).
-- [ ] RF-3: **Edición manual** ("Mi despensa"): listar productos, buscar, editar nombre/emoji/pasillo/marca, y eliminar (con `ConfirmDialog`). Accesible desde el home.
-- [ ] RF-4: **Sugerencias en `AddItemForm`**: al escribir (o vacío), se muestran chips con los productos frecuentes que coinciden con el texto; tocar un chip completa el campo de nombre. Hasta 6 chips, ordenados por `count desc, lastUsedAt desc`. Funciona en modo normal y en **modo foco**.
-- [ ] RF-5: **Detalle de lista**: la misma fuente alimenta el detalle (mismo form) y, cuando un item coincide (por nombre normalizado) con un producto de la despensa, se muestra su `emoji` junto al nombre del item (decorativo).
-- [ ] RF-6: **Normalización**: "leche", " Leche " y "LECHE" deduplican en una sola entrada (`trim` + lowercase + colapso de espacios).
-- [ ] RF-7: Categoría de producto **no** se sincroniza ni se comparte: el catálogo es 100% local del dispositivo.
+- [x] RF-1: Store local `pantryStore` persistido (`super-list-pantry`) con productos `{ id, name, emoji?, aisle?, brand?, count, lastUsedAt }`, deduplicados por nombre normalizado.
+- [x] RF-2: **Auto-aprendizaje**: cada alta de item desde `AddItemForm` registra el producto; si ya existe incrementa `count` y actualiza `lastUsedAt`; si es nuevo lo crea con `count: 1`. No rompe ni bloquea el alta (best-effort).
+- [x] RF-3: **Edición manual** ("Mi despensa"): listar productos, buscar, editar nombre/emoji/pasillo/marca, y eliminar (con `ConfirmDialog`). Accesible desde el home.
+- [x] RF-4: **Sugerencias en `AddItemForm`**: al escribir (o vacío), se muestran chips con los productos frecuentes que coinciden con el texto; tocar un chip completa el campo de nombre. Hasta 6 chips, ordenados por `count desc, lastUsedAt desc`. Funciona en modo normal y en **modo foco**.
+- [x] RF-5: **Detalle de lista**: la misma fuente alimenta el detalle (mismo form) y, cuando un item coincide (por nombre normalizado) con un producto de la despensa, se muestra su `emoji` junto al nombre del item (decorativo).
+- [x] RF-6: **Normalización**: "leche", " Leche " y "LECHE" deduplican en una sola entrada (`trim` + lowercase + colapso de espacios).
+- [x] RF-7: Categoría de producto **no** se sincroniza ni se comparte: el catálogo es 100% local del dispositivo.
 
 ## Requisitos no funcionales
 
@@ -72,24 +72,24 @@ Objetivo: un **catálogo personal** (local-first) con los productos que el usuar
 
 ## Criterios de aceptación
 
-- [ ] CA-1: Dado que agrego "Leche" en una lista tres veces, entonces en la despensa aparece "Leche" con `count: 3` y es la primera sugerencia en los chips.
-- [ ] CA-2: Dado `AddItemForm`, cuando escribo "le", entonces los chips sugieren los productos coincidentes y al tocarlos se completa el campo de nombre.
-- [ ] CA-3: Dado el home, cuando entro a "Mi despensa", edito emoji/pasillo/marca y recargo, entonces los cambios persisten.
-- [ ] CA-4: Dado un producto de la despensa, cuando lo elimino con confirmación, entonces desaparece del catálogo y de los chips.
-- [ ] CA-5: Dado "leche", " Leche " y "LECHE", cuando se registran, entonces queda una única entrada normalizada.
-- [ ] CA-6: Dado el detalle de una lista, cuando un item coincide con un producto de la despensa, entonces se muestra su emoji junto al nombre (decorativo, `aria-hidden`).
-- [ ] CA-7: Sin conexión y sin APIs externas, el catálogo y las sugerencias funcionan (localStorage); un localStorage lleno no rompe el alta de items.
-- [ ] CA-8: `npm test`, `npm run lint`, `tsc --noEmit` y `next build` pasan; coverage ≥80% líneas / ≥75% ramas.
+- [x] CA-1: Dado que agrego "Leche" en una lista tres veces, entonces en la despensa aparece "Leche" con `count: 3` y es la primera sugerencia en los chips.
+- [x] CA-2: Dado `AddItemForm`, cuando escribo "le", entonces los chips sugieren los productos coincidentes y al tocarlos se completa el campo de nombre.
+- [x] CA-3: Dado el home, cuando entro a "Mi despensa", edito emoji/pasillo/marca y recargo, entonces los cambios persisten.
+- [x] CA-4: Dado un producto de la despensa, cuando lo elimino con confirmación, entonces desaparece del catálogo y de los chips.
+- [x] CA-5: Dado "leche", " Leche " y "LECHE", cuando se registran, entonces queda una única entrada normalizada.
+- [x] CA-6: Dado el detalle de una lista, cuando un item coincide con un producto de la despensa, entonces se muestra su emoji junto al nombre (decorativo, `aria-hidden`).
+- [x] CA-7: Sin conexión y sin APIs externas, el catálogo y las sugerencias funcionan (localStorage); un localStorage lleno no rompe el alta de items.
+- [x] CA-8: `npm test`, `npm run lint`, `tsc --noEmit` y `next build` pasan; coverage ≥80% líneas / ≥75% ramas.
 
 ## Tareas de implementación (derivadas)
 
-- [ ] T-1: `productNames.ts` + `pantrySelectors.ts` (puros) + tests.
-- [ ] T-2: `pantryStore.ts` (persist, cap, try/catch) + test.
-- [ ] T-3: `PantryChips` + integración en `AddItemForm` (render + `recordItem` en `handleAdd`) + tests extendidos.
-- [ ] T-4: `PantryEditor` (+ dialog interno) + test.
-- [ ] T-5: `src/app/despensa/page.tsx` + link en el home + smoke test.
-- [ ] T-6: Emoji decorativo en `ListItemRow` (match por nombre normalizado).
-- [ ] T-7: `vitest.config.ts` (include) + verificación `npm test`/`lint`/`tsc`/`build`.
+- [x] T-1: `productNames.ts` + `pantrySelectors.ts` (puros) + tests.
+- [x] T-2: `pantryStore.ts` (persist, cap, try/catch) + test.
+- [x] T-3: `PantryChips` + integración en `AddItemForm` (render + `recordItem` en `handleAdd`) + tests extendidos.
+- [x] T-4: `PantryEditor` (+ dialog interno) + test.
+- [x] T-5: `src/app/despensa/page.tsx` + link en el home + smoke test.
+- [x] T-6: Emoji decorativo en `ListItemRow` (match por nombre normalizado).
+- [x] T-7: `vitest.config.ts` (include) + verificación `npm test`/`lint`/`tsc`/`build`.
 
 ## Notas / decisiones
 
@@ -99,3 +99,21 @@ Objetivo: un **catálogo personal** (local-first) con los productos que el usuar
 - **Colisiones**: `AddItemForm` lo toca solo esta feature (A/D tocan `ListItemRow`/`listStore`, C toca home+detalle). El emoji en `ListItemRow` (RF-5) es mínimo y aditivo; si A y D ya modificaron esa fila, este cambio se aplica encima sin conflicto conceptual. La entrada del home convive con la de C (botones distintos en el header). **Orden recomendado: C → A → B → D**.
 - **Moneda/formato**: no aplica (sin precios).
 - **Iconos**: verificar export de `Package`/`Warehouse` (o equivalente) en la versión instalada de `lucide-react` antes de usarlos (patrón del spec de barcode sobre `ScanBarcode`).
+
+## Decisiones de implementación
+
+- `PantryChips` suscribe con `usePantry((s) => s.products)` (hook del store, detalle de specs/A-D como AddItemForm ya cubierto) y delega el orden/límite a `suggestProducts`; render `null` sin sugerencias.
+- `recordItem`/`upsertProduct`/`removeProduct` delegan en helpers puros (`recordProduct`, `upsertProductEntry`, `removeProductEntry`) para que el cap LRU y el dedup vivan en `pantrySelectors` (incluido al coverage); el store protege las escrituras de localStorage con try/catch.
+- El texto "usos" usa singular/plural (`1 uso` / `N usos`, donde `N` incluye `0 usos` para altas manuales).
+- UI: icono `Package` (existe en la versión instalada de lucide-react) en el header del home; página `/despensa` con link de vuelta "Inicio"; el dialog de edición se llama `ProductDialog` (patrón `CreateListDialog`).
+- Emoji en `ListItemRow`: `memo` de match por nombre normalizado, `aria-hidden`, tamaño heredado (decorativo, no cambia el texto accesible).
+
+## Checklist final
+
+- `npm test`: 237 tests (38 archivos) ✔
+- Coverage global: **91.23% stmts / 85.22% branch / 89.32% funcs / 92.94% lines** (min 80/75/80/80) ✔
+  - Nuevos: `productNames.ts` y `pantrySelectors.ts` 100% líneas; `PantryChips.tsx` 100%; `PantryEditor.tsx` 92% líneas / 84% funcs; `pantryStore.ts` 84% líneas.
+- `npm run lint`: exit 0 (única advertencia preexistente en `coverage/lcov-report/*`) ✔
+- `tsc --noEmit`: limpio ✔
+- `next build`: green, ruta `/despensa` estática generada ✔
+- QA en navegador (dev server): `/despensa` + CRUD (crear/editar/eliminar producto) + link de home ✔

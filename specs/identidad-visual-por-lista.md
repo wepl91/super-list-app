@@ -53,7 +53,7 @@ Objetivo: cada lista tiene un **color** y un **emoji** elegidos por su propietar
   - `pullAll`: el `select` de `lists` pasa a `"id, owner_id, name, position, color, emoji, created_at, updated_at"`.
   - `upsertList`: incluye `color: list.color ?? null, emoji: list.emoji ?? null`.
   - Realtime intacto.
-- **`src/lib/listIdentity.ts`** (nuevo, puro): `LIST_COLORS: ListColor[]`, `defaultColorFor(id: string): ListColor` (hash del id contra la palette, determinístico), `normalizeEmoji(emoji?: string): string | undefined` (trim, máx. 2 code points con `[...str]`, inválido → `undefined`), y el **lookup de clases** `colorAccentClass(color)` / `colorBorderClass(color)` (objetos literales con las clases Tailwind reales de la build).
+- **`src/lib/listIdentity.ts`** (nuevo, puro): `LIST_COLORS: ListColor[]`, `defaultColorFor(id: string): ListColor` (hash del id contra la palette, determinístico), `normalizeEmoji(emoji?: string): string | undefined` (trim, máx. 2 code points con `[...str]`, inválido → `undefined`), y los lookups: `colorSwatchClass(color)` y `colorChipClass(color)` (clases literales) y `colorHex(color)` (**hex del color**: el borde izquierdo del `ListCard` se pinta inline para evitar colisiones de orden entre `border-*` de Tailwind).
 - **`src/lib/stores/listStore.ts`**: `createList` asigna `color: defaultColorFor(newId())`; nueva acción `setListIdentity(id, identity: { color: ListColor; emoji?: string })` (patrón `renameList`: bump `syncStatus: "dirty"` + `pushListToRemote` con sesión). `cloneList` copia `color`/`emoji` del origen.
 
 ### UI

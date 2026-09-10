@@ -2,27 +2,12 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { ArrowLeft, Hand, Palette, Plus, ShoppingBasket, Users, X } from "lucide-react";
+import { ArrowLeft, Hand, Plus, ShoppingBasket, Users, X } from "lucide-react";
 import { useListStore } from "@/lib/stores/listStore";
 import { usePreferences } from "@/lib/stores/preferencesStore";
-import { colorChipClass, colorSwatchClass, effectiveColor } from "@/lib/listIdentity";
-import { splitPinned } from "@/lib/itemsOrder";
+import { colorSwatchClass, effectiveColor } from "@/lib/listIdentity";
 import ListIdentityEditor from "@/components/ListIdentityEditor";
-import ListItemSortable from "@/components/ListItemSortable";
+import ListItemRow from "@/components/ListItemRow";
 import ListFilterChips, { type ListFilter } from "@/components/ListFilterChips";
 import { useHydrated } from "@/lib/useHydrated";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
@@ -63,17 +48,6 @@ export default function ListDetailPage({
   const [identityOpen, setIdentityOpen] = useState(false);
   const [filter, setFilter] = useState<ListFilter>("all");
   const fabRef = useRef<HTMLButtonElement>(null);
-
-  const sensors = useSensors(
-    // Long-press en el handle (PointerSensor) + flechas (KeyboardSensor) para
-    // una alternativa accesible al arrastre.
-    useSensor(PointerSensor, {
-      activationConstraint: { delay: 400, tolerance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   const listId = list?.id;
 
@@ -132,13 +106,6 @@ export default function ListDetailPage({
     setEditingId(null);
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    if (!isSignedIn || !list) return;
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    useListStore.getState().reorderItems(list.id, String(active.id), String(over.id));
-  }
-
   const hasCompleted = (list?.items ?? []).some((i) => i.completed);
 
   // Si hay sesión, no renderizar desde la caché local hasta que el primer
@@ -176,15 +143,13 @@ export default function ListDetailPage({
 
   const completed = list.items.filter((i) => i.completed).length;
 
-  // Fijados arriba (siempre visibles); el resto se agrupa y filtra por estado.
-  const { pinned: pinnedItems, rest: restItems } = splitPinned(list.items);
-  const restPending = restItems.filter((i) => !i.completed);
-  const restDone = restItems.filter((i) => i.completed);
+  const pendingItems = list.items.filter((i) => !i.completed);
+  const doneItems = list.items.filter((i) => i.completed);
 
   const showPending = filter === "all" || filter === "pending";
   const showDone = filter === "done" || (filter === "all" && !hideCompleted);
-  const hasVisibleRest = (showPending && restPending.length > 0) || (showDone && restDone.length > 0);
-  const isEmptyView = !hasVisibleRest && pinnedItems.length === 0;
+  const hasVisibleItems = (showPending && pendingItems.length > 0) || (showDone && doneItems.length > 0);
+  const isEmptyView = !hasVisibleItems;
 
   return (
     <PageTransition>
@@ -203,7 +168,7 @@ export default function ListDetailPage({
               {list.emoji && (
                 <span
                   aria-hidden
-                  className={`shrink-0 rounded-md px-1.5 py-1 text-xl leading-none ${colorChipClass(effectiveColor(list))}`}
+                  className="shrink-0 rounded-md px-1.5 py-1 text-xl leading-none"
                 >
                   {list.emoji}
                 </span>
@@ -231,17 +196,6 @@ export default function ListDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {isOwner && (
-            <button
-              type="button"
-              onClick={() => setIdentityOpen(true)}
-              aria-label="Personalizar lista"
-              title="Personalizar lista"
-              className="rounded-lg p-2 text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-zinc-100 hover:text-primary dark:hover:bg-zinc-800"
-            >
-              <Palette className="h-5 w-5" aria-hidden />
-            </button>
-          )}
           <button
             type="button"
             onClick={() => setFocusMode(!focusMode)}
@@ -259,6 +213,8 @@ export default function ListDetailPage({
               onDeleteCompleted={() =>
                 useListStore.getState().deleteCompletedItems(list.id)
               }
+              onCustomize={isOwner ? () => setIdentityOpen(true) : undefined}
+              canCustomize={isOwner}
               hasCompleted={hasCompleted}
               hideCompleted={hideCompleted}
               onToggleHideCompleted={() => setHideCompleted(!hideCompleted)}
@@ -296,11 +252,7 @@ export default function ListDetailPage({
       )}
 
       {list.items.length > 0 && (
-        <ProgressSummary total={list.items.length} completed={completed} />
-      )}
-
-      {list.items.length > 0 && (
-        <div className="-mt-3">
+        <div className="mb-4 mt-3">
           <ListFilterChips filter={filter} onChange={setFilter} focusMode={focusMode} />
         </div>
       )}
@@ -332,95 +284,52 @@ export default function ListDetailPage({
           />
         )
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
         <div className="flex flex-col gap-4">
-          {pinnedItems.length > 0 && (
-            <section aria-label="Fijados">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Fijados ({pinnedItems.length})
-              </h3>
-              <ul className="flex flex-col gap-2">
-                <SortableContext
-                  items={pinnedItems.map((i) => i.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {pinnedItems.map((item) => (
-                    <ListItemSortable
-                      key={item.id}
-                      listId={list.id}
-                      item={item}
-                      editing={editingId === item.id && isSignedIn}
-                      onEdit={() => setEditingId(item.id)}
-                      onCancelEdit={() => setEditingId(null)}
-                      onSave={handleSaveEdit}
-                      isReadOnly={!isSignedIn}
-                      focusMode={focusMode}
-                    />
-                  ))}
-                </SortableContext>
-              </ul>
-            </section>
-          )}
-          {showPending && restPending.length > 0 && (
+          {showPending && pendingItems.length > 0 && (
             <section aria-label="Pendientes">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Pendientes ({restPending.length})
+                Pendientes ({pendingItems.length})
               </h3>
               <ul className="flex flex-col gap-2">
-                <SortableContext
-                  items={restPending.map((i) => i.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {restPending.map((item) => (
-                    <ListItemSortable
-                      key={item.id}
-                      listId={list.id}
-                      item={item}
-                      editing={editingId === item.id && isSignedIn}
-                      onEdit={() => setEditingId(item.id)}
-                      onCancelEdit={() => setEditingId(null)}
-                      onSave={handleSaveEdit}
-                      isReadOnly={!isSignedIn}
-                      focusMode={focusMode}
-                    />
-                  ))}
-                </SortableContext>
+                {pendingItems.map((item) => (
+                  <ListItemRow
+                    key={item.id}
+                    listId={list.id}
+                    item={item}
+                    editing={editingId === item.id && isSignedIn}
+                    onEdit={() => setEditingId(item.id)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onSave={handleSaveEdit}
+                    isReadOnly={!isSignedIn}
+                    focusMode={focusMode}
+                  />
+                ))}
               </ul>
             </section>
           )}
-          {showDone && restDone.length > 0 && (
+          {showDone && doneItems.length > 0 && (
             <section aria-label="Completados">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Completados ({restDone.length})
+                Completados ({doneItems.length})
               </h3>
               <ul className="flex flex-col gap-2">
-                <SortableContext
-                  items={restDone.map((i) => i.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {restDone.map((item) => (
-                    <ListItemSortable
-                      key={item.id}
-                      listId={list.id}
-                      item={item}
-                      editing={editingId === item.id && isSignedIn}
-                      onEdit={() => setEditingId(item.id)}
-                      onCancelEdit={() => setEditingId(null)}
-                      onSave={handleSaveEdit}
-                      isReadOnly={!isSignedIn}
-                      focusMode={focusMode}
-                    />
-                  ))}
-                </SortableContext>
+                {doneItems.map((item) => (
+                  <ListItemRow
+                    key={item.id}
+                    listId={list.id}
+                    item={item}
+                    editing={editingId === item.id && isSignedIn}
+                    onEdit={() => setEditingId(item.id)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onSave={handleSaveEdit}
+                    isReadOnly={!isSignedIn}
+                    focusMode={focusMode}
+                  />
+                ))}
               </ul>
             </section>
           )}
         </div>
-        </DndContext>
       )}
 
       <ConfirmDialog
