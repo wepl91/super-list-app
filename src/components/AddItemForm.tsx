@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import BarcodeScannerButton from "@/components/BarcodeScannerButton";
 import VoiceDictationButton from "@/components/VoiceDictationButton";
 import { haptic } from "@/lib/haptics";
@@ -9,6 +10,8 @@ import { lookupProductName } from "@/lib/barcodeLookup";
 import { useBarcodes } from "@/lib/stores/barcodeStore";
 import { useListStore } from "@/lib/stores/listStore";
 import type { NewItemInput } from "@/lib/stores/listStore";
+
+const LOOKUP_FAILED_MESSAGE = "No se pudo encontrar el producto.";
 
 interface AddItemFormProps {
   listId: string;
@@ -32,6 +35,8 @@ export default function AddItemForm({
   const [unit, setUnit] = useState("");
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const [entering, setEntering] = useState(true);
 
@@ -53,26 +58,42 @@ export default function AddItemForm({
     if (closing) nameRef.current?.blur();
   }, [closing]);
 
+  useEffect(() => {
+    if (!snackbar) return;
+    const t = setTimeout(() => setSnackbar(null), 3500);
+    return () => clearTimeout(t);
+  }, [snackbar]);
+
   function resetForm() {
     setName("");
     setDescription("");
     setQuantity(1);
     setUnit("");
     setLastScannedCode(null);
+    setLookupLoading(false);
   }
 
   function handleDetected(code: string) {
-    const known = useBarcodes.getState().getBarcodeName(code);
-    setName(known ?? code);
     setLastScannedCode(code);
-    if (known) return;
-    // Código desconocido localmente: intentamos el lookup online. Si trae
-    // nombre y el usuario no lo reemplazó todavía, lo usamos y lo cacheamos
-    // para que la próxima vez sea instantáneo (y funcione offline).
+    const known = useBarcodes.getState().getBarcodeName(code);
+    if (known) {
+      setName(known);
+      return;
+    }
+    setSnackbar(null);
+    setLookupLoading(true);
     void lookupProductName(code).then((name) => {
-      if (!name) return;
+      setLookupLoading(false);
+      if (!name) {
+        // No se pudo resolver: snackbar rojo y el campo queda vacío para
+        // cargar a mano o por voz.
+        setSnackbar(LOOKUP_FAILED_MESSAGE);
+        return;
+      }
+      // Solo aplicamos el nombre si el usuario no empezó a escribir/dictar
+      // mientras tanto; si ya lo hizo, respetamos su texto.
       setName((current) => {
-        if (!isRawBarcode(current, code)) return current;
+        if (current.trim() !== "") return current;
         useBarcodes.getState().setBarcodeName(code, name.trim());
         return name;
       });
@@ -134,6 +155,16 @@ export default function AddItemForm({
               onError={(msg) => setVoiceError(msg)}
             />
             <BarcodeScannerButton onDetect={handleDetected} />
+            {lookupLoading && (
+              <span
+                role="status"
+                aria-live="polite"
+                className="flex shrink-0 items-center gap-1 text-xs text-text-secondary"
+              >
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                <span className="sr-only">Buscando producto…</span>
+              </span>
+            )}
           </div>
           <button
             type="submit"
@@ -163,6 +194,16 @@ export default function AddItemForm({
               onError={(msg) => setVoiceError(msg)}
             />
             <BarcodeScannerButton onDetect={handleDetected} />
+            {lookupLoading && (
+              <span
+                role="status"
+                aria-live="polite"
+                className="flex shrink-0 items-center gap-1 text-xs text-text-secondary"
+              >
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                <span className="sr-only">Buscando producto…</span>
+              </span>
+            )}
           </div>
           <label htmlFor="item-desc" className="sr-only">
             Descripción (opcional)
@@ -217,6 +258,14 @@ export default function AddItemForm({
         >
           {voiceError}
         </p>
+      )}
+      {snackbar && (
+        <div
+          role="alert"
+          className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-lg"
+        >
+          {snackbar}
+        </div>
       )}
     </form>
     </div>

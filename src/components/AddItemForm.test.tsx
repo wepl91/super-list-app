@@ -250,16 +250,20 @@ describe("AddItemForm", () => {
     });
   });
 
-  it("al escanear un código sin nombre conocido completa el campo con el código", async () => {
+  it("con el lookup fallido deja el campo vacío y muestra el snackbar", async () => {
     const user = userEvent.setup();
     render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
     await user.click(
       screen.getByRole("button", { name: "Escanear código de barras" })
     );
     await act(async () => barcodeScanner.__scan("7790070239437"));
-    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue(
-      "7790070239437"
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "No se pudo encontrar el producto."
+      )
     );
+    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("");
   });
 
   it("al escanear un código con nombre aprendido completa con el nombre", async () => {
@@ -271,6 +275,8 @@ describe("AddItemForm", () => {
     );
     await act(async () => barcodeScanner.__scan("7790070239437"));
     expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("Leche");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("al agregar un item escaneado y renombrado persiste el mapeo código → nombre", async () => {
@@ -294,16 +300,19 @@ describe("AddItemForm", () => {
     });
   });
 
-  it("no persiste el mapeo si el nombre sigue siendo el código cruto", async () => {
+  it("el nombre aprendido localmente gana aunque el lookup traiga otro", async () => {
+    useBarcodes.getState().setBarcodeName("7790070239437", "Leche");
+    barcodeLookup.__setResult("Leche descremada");
     const user = userEvent.setup();
     render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
     await user.click(
       screen.getByRole("button", { name: "Escanear código de barras" })
     );
-    await act(async () => barcodeScanner.__scan("456"));
-    await user.click(screen.getByRole("button", { name: "Añadir" }));
+    await act(async () => barcodeScanner.__scan("7790070239437"));
 
-    expect(useBarcodes.getState().getBarcodeName("456")).toBeUndefined();
+    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("Leche");
+    expect(useBarcodes.getState().getBarcodeName("7790070239437")).toBe("Leche");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("con el lookup online completa el campo con el nombre y cachea el mapeo", async () => {
@@ -325,7 +334,7 @@ describe("AddItemForm", () => {
     );
   });
 
-  it("si el usuario ya editó el nombre, el lookup no lo pisa ni guarda el mapeo", async () => {
+  it("si el usuario ya escribió, el lookup no pisa su texto ni guarda el mapeo", async () => {
     barcodeLookup.__defer();
     const user = userEvent.setup();
     render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
@@ -334,12 +343,33 @@ describe("AddItemForm", () => {
     );
     await act(async () => barcodeScanner.__scan("7790070239437"));
     const input = screen.getByLabelText("Nombre del elemento");
-    await user.clear(input);
     await user.type(input, "Huevos");
 
     await act(async () => barcodeLookup.__resolve("Leche descremada"));
 
     expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("Huevos");
     expect(useBarcodes.getState().getBarcodeName("7790070239437")).toBeUndefined();
+  });
+
+  it("muestra el loader mientras el lookup está en curso y completa al resolver", async () => {
+    barcodeLookup.__defer();
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.click(
+      screen.getByRole("button", { name: "Escanear código de barras" })
+    );
+    await act(async () => barcodeScanner.__scan("7790070239437"));
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+
+    await act(async () => barcodeLookup.__resolve("Yerba mate"));
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue(
+      "Yerba mate"
+    );
+    expect(useBarcodes.getState().getBarcodeName("7790070239437")).toBe(
+      "Yerba mate"
+    );
   });
 });

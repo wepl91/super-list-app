@@ -1,7 +1,7 @@
 # Escáner de códigos de barras para agregar elementos de lista
 
 **Estado**: `implemented`
-**Versión**: v2
+**Versión**: v3
 **Fecha**: 2026-09-09
 
 ## Contexto / Objetivo
@@ -50,12 +50,15 @@ Edge; **no** Safari ni Firefox):
   (`Escape` y click en cerrar cierran el overlay).
 - [x] RF-3: Al detectar un código:
   - Si el código tiene **nombre conocido** en el mapa local → se completa `setName(nombre)`.
-  - Si **no** → se deja el **código crudo** como texto en el campo para que el
-    usuario lo renombre (o complete con lo que escriba).
-  - **Lookup online (v2)**: si el código es desconocido localmente, se consulta
-    **Open Food Facts** (`world.openfoodfacts.org/api/v2/product/{code}.json`);
-    si responde con nombre y el campo sigue siendo el código (no fue editado),
-    se completa con el nombre y se cachea en el mapa local.
+  - Si **no**, se consulta **Open Food Facts**
+    (`world.openfoodfacts.org/api/v2/product/{code}.json`): mientras busca se
+    muestra un **loader** ("Buscando producto…").
+    - Si el lookup **resuelve** y el campo sigue vacío → se completa con el
+      nombre y se cachea en el mapa local (si el usuario ya escribió/dictó, se
+      respeta su texto).
+    - Si el lookup **falla o no lo encuentra** → el campo queda **vacío** (para
+      cargar a mano o por voz) y se muestra un **snackbar rojo**
+      ("No se pudo encontrar el producto.").
   - El overlay se cierra tras la primera detección exitosa (con cooldown para no
     re-detectar el mismo código en el mismo frame/segundo).
 - [x] RF-4: **No auto-agrega** el elemento: el nombre queda en el campo listo para
@@ -197,6 +200,9 @@ Edge; **no** Safari ni Firefox):
 - [x] T-9 (v2): Integrar el lookup en `AddItemForm.handleDetected` (cache,
   respeto a la edición del usuario) + tests (lookup OK cachea, lookup no pisa
   la edición).
+- [x] T-10 (v3): Lookup fallido → **snackbar rojo** y campo vacío (se carga a
+  mano o por voz); **loader** mientras se procesa; los dos con tests
+  (snackbar, campo vacío, loader visible/invisible, nombre aprendido gana).
 
 ## Notas / decisiones
 
