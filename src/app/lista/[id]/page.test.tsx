@@ -54,6 +54,20 @@ vi.mock("@/app/supabase-actions", () => ({
   getSharedMemberEmails: vi.fn(() => Promise.resolve([])),
 }));
 
+vi.mock("@dnd-kit/sortable", () => ({
+  useSortable: () => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: () => {},
+    transform: null,
+    transition: undefined,
+    isDragging: false,
+  }),
+  SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  verticalListSortingStrategy: () => {},
+  sortableKeyboardCoordinates: () => null,
+}));
+
 vi.mock("@/components/ListOptionsMenu", () => ({ default: () => null }));
 vi.mock("@/components/AuthGateCta", () => ({
   default: () => <div>AuthGateCta</div>,
@@ -185,5 +199,58 @@ describe("ListDetailPage (smoke)", () => {
       screen.queryByRole("button", { name: "Añadir elemento" })
     ).not.toBeInTheDocument();
     expect(screen.getByText("AuthGateCta")).toBeInTheDocument();
+  });
+
+  it("los chips filtran la lista renderizada", async () => {
+    const user = userEvent.setup();
+    listState.lists[0].items = [
+      { id: "i1", name: "Leche", completed: false, position: 0, quantity: 1, createdAt: 0, updatedAt: 0 },
+      { id: "i2", name: "Harina", completed: true, position: 1, quantity: 1, createdAt: 0, updatedAt: 0 },
+    ] as never;
+    await renderPage();
+
+    expect(screen.getByText("Leche")).toBeInTheDocument();
+    expect(screen.getByText("Harina")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Pendientes" }));
+    expect(screen.getByText("Leche")).toBeInTheDocument();
+    expect(screen.queryByText("Harina")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tachados" }));
+    expect(screen.queryByText("Leche")).not.toBeInTheDocument();
+    expect(screen.getByText("Harina")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Todo" }));
+    expect(screen.getByText("Leche")).toBeInTheDocument();
+    expect(screen.getByText("Harina")).toBeInTheDocument();
+  });
+
+  it("los fijados quedan al tope y sobreviven al filtro", async () => {
+    const user = userEvent.setup();
+    listState.lists[0].items = [
+      { id: "i1", name: "Leche", completed: false, position: 0, pinned: true, quantity: 1, createdAt: 0, updatedAt: 0 },
+      { id: "i2", name: "Harina", completed: true, position: 1, quantity: 1, createdAt: 0, updatedAt: 0 },
+      { id: "i3", name: "Arroz", completed: false, position: 2, quantity: 1, createdAt: 0, updatedAt: 0 },
+    ] as never;
+    await renderPage();
+
+    expect(screen.getByText("Fijados (1)")).toBeInTheDocument();
+    expect(screen.getByText("Leche")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tachados" }));
+    expect(screen.getByText("Leche")).toBeInTheDocument();
+    expect(screen.queryByText("Arroz")).not.toBeInTheDocument();
+    expect(screen.getByText("Harina")).toBeInTheDocument();
+  });
+
+  it("filtro sin resultados muestra el empty state correspondiente", async () => {
+    const user = userEvent.setup();
+    listState.lists[0].items = [
+      { id: "i1", name: "Leche", completed: false, position: 0, quantity: 1, createdAt: 0, updatedAt: 0 },
+    ] as never;
+    await renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Tachados" }));
+    expect(screen.getByText("No hay elementos tachados")).toBeInTheDocument();
   });
 });

@@ -54,6 +54,7 @@ create table if not exists public.list_items (
   unit text,
   completed boolean not null default false,
   position int not null default 0,
+  pinned boolean not null default false,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

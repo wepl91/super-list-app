@@ -1,6 +1,6 @@
 # Gestos táctiles en el detalle de lista (swipe, long-press/reordenar, fijar y filtros)
 
-**Estado**: draft
+**Estado**: `implemented`
 **Versión**: v1
 **Fecha**: 2026-09-09
 
@@ -16,15 +16,15 @@ Objetivo: gestos táctiles móviles (swipe para completar/desmarcar, long-press 
 
 ## Requisitos funcionales
 
-- [ ] RF-1: **Swipe para completar/desmarcar**: deslizar una fila pendiente hacia la derecha la tacha (completa); deslizar una fila completada hacia la izquierda la desmarca. En `isReadOnly` (sin sesión) los gestos de escritura no producen cambios.
-- [ ] RF-2: **Long-press + drag para reordenar**: mantener presionada una fila (o su handle) y arrastrar reordena los items; el nuevo orden persiste (`position`) y se sincroniza (mismo patrón de push por item que `sortItems`).
-- [ ] RF-3: **Fijar items**: un control por fila (botón pin) fija/desfija el item. Los fijados se muestran en una sección "Fijados" al tope del detalle, siempre visibles (aunque estén tachados y aunque el filtro los excluya del grupo natural).
-- [ ] RF-4: Quitar el pin devuelve el item a su grupo natural (pendientes/completados) y posición previa dentro de él.
-- [ ] RF-5: **Filtros del detalle**: chips/segmented "Todo / Pendientes / Tachados" sobre el listado. "Pendientes" oculta completados; "Tachados" oculta pendientes; "Todo" (default) muestra todos.
-- [ ] RF-6: Los gestos y controles conviven con el **modo foco**: swipe igual funciona; el drag usa un handle grande (`GripVertical`) para no chocar con la fila clickeable; la sección "Fijados" y los chips se renderizan con tamaños de foco.
-- [ ] RF-7: **Accesible**: el swipe tiene alternativa por teclado (checkbox/label existentes); el reorden tiene `KeyboardSensor` de dnd-kit (flechas) o mecanismo equivalente; pin y chips con `aria-pressed`/`aria-label`.
-- [ ] RF-8: El **estado del filtro es por dispositivo y por sesión de navegación** (no se persiste ni sincroniza); la **fijación es data de la lista** (`pinned` en `ListItem`) y se sincroniza con el resto de colaboradores.
-- [ ] RF-9: Los items fijados/idoneidad conviven con la agrupación existente de `ux-detalle-lista-visual` (secciones "Pendientes"/"Completados", `ProgressSummary`, `EmptyState`) y con `hideCompleted` (si está activo, "Tachados"/"Todo" respetan la preferencia de ocultar completados fuera de la sección fijada).
+- [x] RF-1: **Swipe para completar/desmarcar**: deslizar una fila pendiente hacia la derecha la tacha (completa); deslizar una fila completada hacia la izquierda la desmarca. En `isReadOnly` (sin sesión) los gestos de escritura no producen cambios.
+- [x] RF-2: **Long-press + drag para reordenar**: mantener presionada una fila (o su handle) y arrastrar reordena los items; el nuevo orden persiste (`position`) y se sincroniza (mismo patrón de push por item que `sortItems`).
+- [x] RF-3: **Fijar items**: un control por fila (botón pin) fija/desfija el item. Los fijados se muestran en una sección "Fijados" al tope del detalle, siempre visibles (aunque estén tachados y aunque el filtro los excluya del grupo natural).
+- [x] RF-4: Quitar el pin devuelve el item a su grupo natural (pendientes/completados) y posición previa dentro de él.
+- [x] RF-5: **Filtros del detalle**: chips/segmented "Todo / Pendientes / Tachados" sobre el listado. "Pendientes" oculta completados; "Tachados" oculta pendientes; "Todo" (default) muestra todos.
+- [x] RF-6: Los gestos y controles conviven con el **modo foco**: swipe igual funciona; el drag usa un handle grande (`GripVertical`) para no chocar con la fila clickeable; la sección "Fijados" y los chips se renderizan con tamaños de foco.
+- [x] RF-7: **Accesible**: el swipe tiene alternativa por teclado (checkbox/label existentes); el reorden tiene `KeyboardSensor` de dnd-kit (flechas); pin y chips con `aria-pressed`/`aria-label`.
+- [x] RF-8: El **estado del filtro es por dispositivo y por sesión de navegación** (no se persiste ni sincroniza); la **fijación es data de la lista** (`pinned` en `ListItem`) y se sincroniza con el resto de colaboradores.
+- [x] RF-9: Los items fijados conviven con la agrupación existente (secciones "Pendientes"/"Completados", `ProgressSummary`, `EmptyState`) y con `hideCompleted` (si está activo, "Tachados"/"Todo" respetan la preferencia de ocultar completados fuera de la sección fijada).
 
 ## Requisitos no funcionales
 
@@ -81,25 +81,25 @@ Objetivo: gestos táctiles móviles (swipe para completar/desmarcar, long-press 
 
 ## Criterios de aceptación
 
-- [ ] CA-1: Dado un item pendiente, cuando swipes a la derecha, entonces se completa (y viceversa con swipe a la izquierda en un completado); en read-only no cambia nada.
-- [ ] CA-2: Dado un detalle con pendientes y completados, cuando arrastras un item a otra posición del mismo grupo, entonces el nuevo orden queda persistido (`position`) y, con sesión, se propaga por sync.
-- [ ] CA-3: Dado un item, al fijarlo, entonces pasa a la sección "Fijados" al tope (visible aunque el filtro seleccionado lo ocultaría); al desfijar vuelve a su grupo.
-- [ ] CA-4: Dados los chips de filtro, cuando selecciono "Pendientes" o "Tachados", entonces el listado se filtra; "Todo" (default) los muestra a todos.
-- [ ] CA-5: En modo foco, la fila completa sigue clickeable para tachar sin conflicto con el long-press del drag (el handle es el área de arrastre).
-- [ ] CA-6: Dado el foco en la lista, cuando uso teclado (flechas del `KeyboardSensor` y Espacio en el checkbox), entonces reordeno y completo items (alternativa accesible al gesto).
-- [ ] CA-7: El estado del filtro no se persiste entre recargas; la fijación sí (por-lista, sincronizada).
-- [ ] CA-8: `npm test`, `npm run lint`, `tsc --noEmit` y `next build` pasan; coverage ≥80% líneas / ≥75% ramas.
+- [x] CA-1: Dado un item pendiente, cuando swipes a la derecha, entonces se completa (y viceversa con swipe a la izquierda en un completado); en read-only no cambia nada.
+- [x] CA-2: Dado un detalle con pendientes y completados, cuando arrastras un item a otra posición del mismo grupo, entonces el nuevo orden queda persistido (`position`) y, con sesión, se propaga por sync.
+- [x] CA-3: Dado un item, al fijarlo, entonces pasa a la sección "Fijados" al tope (visible aunque el filtro seleccionado lo ocultaría); al desfijar vuelve a su grupo.
+- [x] CA-4: Dados los chips de filtro, cuando selecciono "Pendientes" o "Tachados", entonces el listado se filtra; "Todo" (default) los muestra a todos.
+- [x] CA-5: En modo foco, la fila completa sigue clickeable para tachar sin conflicto con el long-press del drag (el handle es el área de arrastre).
+- [x] CA-6: Dado el foco en la lista, cuando uso teclado (flechas del `KeyboardSensor` y Espacio en el checkbox), entonces reordeno y completo items (alternativa accesible al gesto).
+- [x] CA-7: El estado del filtro no se persiste entre recargas; la fijación sí (por-lista, sincronizada).
+- [x] CA-8: `npm test`, `npm run lint`, `tsc --noEmit` y `next build` pasan; coverage ≥80% líneas / ≥75% ramas.
 
 ## Tareas de implementación (derivadas)
 
-- [ ] T-1: Migración SQL (`pinned` en `list_items`) + snapshot `schema.sql`.
-- [ ] T-2: Tipos (`pinned`) + `db.ts` mappers.
-- [ ] T-3: `gestures.ts` + `itemsOrder.ts` (puros) con tests.
-- [ ] T-4: `useItemSwipe.ts` + test.
-- [ ] T-5: `listStore`: `togglePin`, `reorderItems` (delegando en `itemsOrder`), `makeItem`/`updateItem` con `pinned` (sin cubrir el store en coverage; la lógica vive en los helpers puros).
-- [ ] T-6: `ListItemRow` (swipe + pin) + `ListItemSortable` + tests.
-- [ ] T-7: `ListFilterChips` + integración en `page.tsx` (DndContext/sensores, sección Fijados, filtro local) + extend smoke test.
-- [ ] T-8: `vitest.config.ts` (include) + verificación `npm test`/`lint`/`tsc`/`build`.
+- [x] T-1: Migración SQL (`pinned` en `list_items`) + snapshot `schema.sql`.
+- [x] T-2: Tipos (`pinned`) + `db.ts` mappers.
+- [x] T-3: `gestures.ts` + `itemsOrder.ts` (puros) con tests.
+- [x] T-4: `useItemSwipe.ts` + test.
+- [x] T-5: `listStore`: `togglePin`, `reorderItems` (delegando en `itemsOrder`), `makeItem`/`updateItem` con `pinned` (sin cubrir el store en coverage; la lógica vive en los helpers puros).
+- [x] T-6: `ListItemRow` (swipe + pin) + `ListItemSortable` + tests.
+- [x] T-7: `ListFilterChips` + integración en `page.tsx` (DndContext/sensores, sección Fijados, filtro local) + extend smoke test.
+- [x] T-8: `vitest.config.ts` (include) + verificación `npm test`/`lint`/`tsc`/`build`.
 
 ## Notas / decisiones
 
@@ -109,3 +109,14 @@ Objetivo: gestos táctiles móviles (swipe para completar/desmarcar, long-press 
 - **Fijado es data de la lista** (se sincroniza), no preferencia local: compartir una lista implica que el orden/pines importan a ambos (p. ej. la pareja fija "Leche" en el super). El filtro, en cambio, es de visualización individual.
 - **Colisión con Spec D (precios)**: ambos tocan `ListItemRow.handleToggle`/`listStore`. Si D se implementa después de A, el swipe (A) y el diálogo de precio (D) se integran sin reescribir el toggle dos veces. **Orden recomendado: C → A → B → D** para todo el set.
 - **Coverage**: `listStore` permanece fuera del include (server actions/sync); por eso la lógica de reorden/pin se extrae a helpers puros que sí entran. `ListItemRow.tsx` pasa de "testeado sin medir" a medido (ganancia neta de coverage); si los thresholds 80/75 se complicaran, se evaluará revertir esa inclusión y cubrir con el smoke de página.
+
+## Decisiones de implementación
+
+- **`useItemSwipe` no expone `ref`**: los listeners de gesto viven en `window` (no se pierde el track si el dedo sale del nodo) y el inicio se captura con `onPointerDown` sobre la raíz. La fila no necesita un ref propio; el estado `offsetX`/`swiping` alimenta el `transform` en vivo.
+- **Tipado del drag**: `SyntheticListenerMap` no se exporta públicamente en `@dnd-kit/sortable@10`; `ListItemDrag.listeners` se tipa `Record<string, unknown>` (compatible y propagable a la fila).
+- **`ListItemSortable` desactiva la edición en read-only** (`editing && !isReadOnly`), coherente con la página.
+- **Swipe ignora el handle y los controles**: el `ignore` del hook usa `closest("button, input, [data-drag-handle]")`, así el long-press del drag y el checkbox no compiten con el gesto.
+- **`reorderItems` (store)** publica todos los items del grupo reordenado (patrón `sortItems`); el reordeno lógico vive en `itemsOrder.reorderItems`, que reasigna `position` 0..n-1 y es no-op cruzando grupos.
+- **`applyTogglePin`** togglea `pinned` y actualiza `updatedAt` (la fijación viaja en el upsert completo del item; Realtime la propaga).
+- **Chips entre header y `ProgressSummary`**, con copia "Tachados" alineada a `ListOptionsMenu`.
+- **Verificación**: 196 tests; `npm run lint`, `tsc --noEmit` y `next build` verdes. Coverage global **90.46% stmts / 84.13% branch / 88.15% funcs / 92.63% lines**. `ListItemRow.tsx` queda medido al ~63% stmts / 71.9% branch (el editor inline y el flujo de eliminar con timeout no se ejercitan en sus tests); no condiciona los globales.

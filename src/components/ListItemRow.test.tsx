@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import ListItemRow from "@/components/ListItemRow";
 import { useListStore } from "@/lib/stores/listStore";
 import type { ListItem } from "@/lib/types";
@@ -46,6 +47,7 @@ describe("ListItemRow layout", () => {
     useListStore.setState({
       items: {},
       toggleItem: vi.fn(),
+      togglePin: vi.fn(),
       deleteItem: vi.fn(),
     } as never);
   });
@@ -87,5 +89,123 @@ describe("ListItemRow layout", () => {
     expect(screen.queryByRole("button", { name: "Editar Leche" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Eliminar Leche" })).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Completar Leche" })).toBeDisabled();
+  });
+});
+
+describe("ListItemRow fijación", () => {
+  const togglePin = () => useListStore.getState().togglePin as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    useListStore.setState({
+      items: {},
+      toggleItem: vi.fn(),
+      togglePin: vi.fn(),
+      deleteItem: vi.fn(),
+    } as never);
+  });
+
+  it("muestra el botón pin con aria-pressed false para un item sin fijar", () => {
+    renderRow();
+    const pin = screen.getByRole("button", { name: "Fijar Leche" });
+    expect(pin).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("un item fijado muestra 'Desfijar' con aria-pressed true", () => {
+    renderRow({ pinned: true });
+    expect(screen.getByRole("button", { name: "Desfijar Leche" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+  });
+
+  it("click en el pin llama a togglePin con list/item", async () => {
+    const user = userEvent.setup();
+    renderRow();
+    await user.click(screen.getByRole("button", { name: "Fijar Leche" }));
+    expect(togglePin()).toHaveBeenCalledWith("list-1", "item-1");
+  });
+
+  it("en read-only no hay pin (no muta listas ajenas)", () => {
+    renderRow({}, { isReadOnly: true });
+    expect(screen.queryByRole("button", { name: /Fijar|Desfijar/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("ListItemRow swipe", () => {
+  const toggleItem = () => useListStore.getState().toggleItem as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    useListStore.setState({
+      items: {},
+      toggleItem: vi.fn(),
+      togglePin: vi.fn(),
+      deleteItem: vi.fn(),
+    } as never);
+  });
+
+  function swipe(toX: number, opts: { fromX?: number; fromY?: number; toY?: number } = {}) {
+    const li = screen.getByRole("listitem");
+    fireEvent.pointerDown(li, {
+      pointerId: 11,
+      clientX: opts.fromX ?? 0,
+      clientY: opts.fromY ?? 10,
+    });
+    fireEvent.pointerMove(window, { pointerId: 11, clientX: toX, clientY: opts.toY ?? 10 });
+    fireEvent.pointerUp(window, { pointerId: 11, clientX: toX, clientY: opts.toY ?? 10 });
+  }
+
+  it("swipe a la derecha completa un item pendiente", () => {
+    renderRow();
+    act(() => swipe(90));
+    expect(toggleItem()).toHaveBeenCalledWith("list-1", "item-1");
+  });
+
+  it("swipe a la izquierda desmarca un item completado", () => {
+    renderRow({ completed: true });
+    act(() => swipe(10, { fromX: 120 }));
+    expect(toggleItem()).toHaveBeenCalledWith("list-1", "item-1");
+  });
+
+  it("swipe a la izquierda no toca un item pendiente", () => {
+    renderRow();
+    act(() => swipe(10, { fromX: 120 }));
+    expect(toggleItem()).not.toHaveBeenCalled();
+  });
+
+  it("swipe corto (bajo umbral) no completa", () => {
+    renderRow();
+    act(() => swipe(30));
+    expect(toggleItem()).not.toHaveBeenCalled();
+  });
+
+  it("en read-only el swipe no muta nada", () => {
+    renderRow({}, { isReadOnly: true });
+    act(() => swipe(90));
+    expect(toggleItem()).not.toHaveBeenCalled();
+  });
+
+  it("un swipe que empieza en un botón (el pin) no dispara toggle", () => {
+    renderRow();
+    const pin = screen.getByRole("button", { name: "Fijar Leche" }) as HTMLElement;
+    act(() => {
+      fireEvent.pointerDown(pin, { pointerId: 12, clientX: 0, clientY: 10 });
+      fireEvent.pointerMove(window, { pointerId: 12, clientX: 90, clientY: 10 });
+      fireEvent.pointerUp(window, { pointerId: 12, clientX: 90, clientY: 10 });
+    });
+    expect(toggleItem()).not.toHaveBeenCalled();
+  });
+
+  it("muestra el feedback en vivo del desplazamiento horizontal", () => {
+    const { container } = renderRow();
+    const li = container.querySelector("li") as HTMLElement;
+    act(() => {
+      fireEvent.pointerDown(li, { pointerId: 13, clientX: 0, clientY: 10 });
+      fireEvent.pointerMove(window, { pointerId: 13, clientX: 70, clientY: 12 });
+    });
+    expect(li.style.transform).toBe("translate3d(70px, 0, 0)");
+    act(() => {
+      fireEvent.pointerUp(window, { pointerId: 13, clientX: 70, clientY: 12 });
+    });
+    expect(li.style.transform).toBe("");
   });
 });
