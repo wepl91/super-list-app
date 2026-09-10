@@ -10,6 +10,7 @@ import {
   EllipsisVertical,
   GripVertical,
   HardDrive,
+  Palette,
   Pencil,
   RefreshCw,
   Share,
@@ -19,11 +20,13 @@ import {
 } from "lucide-react";
 import type { List } from "@/lib/types";
 import { useListStore } from "@/lib/stores/listStore";
+import { colorBorderClass, colorChipClass, effectiveColor } from "@/lib/listIdentity";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getSharedMemberEmails } from "@/app/supabase-actions";
 import AddMemberForm from "@/components/AddMemberForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import ListIdentityEditor from "@/components/ListIdentityEditor";
 
 interface ListCardProps {
   list: List;
@@ -51,6 +54,7 @@ export default function ListCard({
   const [syncTipOpen, setSyncTipOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
   const [flashSelf, setFlashSelf] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -108,6 +112,9 @@ export default function ListCard({
   const isShared = isOwner && (list.sharedCount ?? 0) > 0;
   const progressPct =
     list.items.length > 0 ? Math.round((completed / list.items.length) * 100) : 0;
+  const color = effectiveColor(list);
+  const accentCls = colorBorderClass(color);
+  const emojiChipCls = colorChipClass(color);
 
   function handleDelete() {
     setMenuOpen(false);
@@ -146,7 +153,7 @@ export default function ListCard({
     <li
       ref={setNodeRef}
       style={style}
-      className={`rounded-xl border border-zinc-200 bg-surface shadow-sm transition-shadow dark:border-zinc-700 ${
+      className={`rounded-xl border border-zinc-200 bg-surface shadow-sm transition-shadow dark:border-zinc-700 ${accentCls} ${
         isDragging
           ? "z-10 scale-[1.02] opacity-90 shadow-lg ring-2 ring-primary/50"
           : ""
@@ -219,6 +226,14 @@ export default function ListCard({
         ) : (
           <Link href={`/lista/${list.id}`} className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
+              {list.emoji && (
+                <span
+                  aria-hidden
+                  className={`shrink-0 rounded-md px-1.5 py-0.5 text-sm leading-none ${emojiChipCls}`}
+                >
+                  {list.emoji}
+                </span>
+              )}
               <p className="truncate text-sm font-medium">{list.name}</p>
               {isShared && (
                 <button
@@ -294,6 +309,19 @@ export default function ListCard({
                   role="menuitem"
                   onClick={() => {
                     setMenuOpen(false);
+                    setIdentityOpen(true);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800"
+                >
+                  <Palette className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
+                  Personalizar
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
                     setShareOpen(true);
                   }}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800"
@@ -358,6 +386,14 @@ export default function ListCard({
           list={list}
           onClose={() => setMembersOpen(false)}
           setListSharedMembers={setListSharedMembers}
+        />
+      )}
+
+      {isOwner && identityOpen && (
+        <ListIdentityEditor
+          list={list}
+          open={identityOpen}
+          onClose={() => setIdentityOpen(false)}
         />
       )}
     </li>

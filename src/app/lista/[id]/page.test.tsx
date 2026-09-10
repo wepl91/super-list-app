@@ -13,6 +13,8 @@ const listState = vi.hoisted(() => ({
       items: [] as never[],
       position: 0,
       sharedMembers: [],
+      emoji: "🍎",
+      color: "emerald",
     },
   ],
   ready: true,
@@ -82,6 +84,31 @@ describe("ListDetailPage (smoke)", () => {
       removeListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })) as unknown as typeof window.matchMedia;
+    authState.user = { id: "u1" };
+    authState.status = "signedIn";
+  });
+
+  it("muestra el emoji decorativo de la lista en el header", async () => {
+    await renderPage();
+    const emoji = screen.getByText("🍎");
+    expect(emoji).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("el botón Personalizar lista aparece para el owner", async () => {
+    await renderPage();
+    expect(
+      screen.getByRole("button", { name: "Personalizar lista" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("🍎")).toBeInTheDocument();
+  });
+
+  it("el botón Personalizar lista no aparece para un editor/guest", async () => {
+    authState.user = { id: "u2" };
+    await renderPage();
+    expect(
+      screen.queryByRole("button", { name: "Personalizar lista" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("🍎")).toBeInTheDocument();
   });
 
   it("muestra el FAB cerrado y sin form al navegar con sesión", async () => {

@@ -18,14 +18,16 @@ export default defineConfig({
       // supabase (client/server/auth), sync (realtime/service), el store que
       // dispara server actions (listStore), el service worker y los bundle-only.
       include: [
-        "src/lib/haptics.ts",
+"src/lib/haptics.ts",
         "src/lib/loginPrompt.ts",
+        "src/lib/listIdentity.ts",
         "src/lib/useHydrated.ts",
         "src/lib/theme.tsx",
         "src/lib/useScreenWakeLock.ts",
         "src/lib/stores/preferencesStore.ts",
         "src/components/ConfirmDialog.tsx",
         "src/components/CreateListDialog.tsx",
+        "src/components/ListIdentityEditor.tsx",
         "src/components/AddItemForm.tsx",
         "src/components/AuthGateCta.tsx",
         "src/components/ThemeToggle.tsx",

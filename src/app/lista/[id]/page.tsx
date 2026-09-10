@@ -2,9 +2,11 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Hand, Plus, ShoppingBasket, Users, X } from "lucide-react";
+import { ArrowLeft, Hand, Palette, Plus, ShoppingBasket, Users, X } from "lucide-react";
 import { useListStore } from "@/lib/stores/listStore";
 import { usePreferences } from "@/lib/stores/preferencesStore";
+import { colorChipClass, colorSwatchClass, effectiveColor } from "@/lib/listIdentity";
+import ListIdentityEditor from "@/components/ListIdentityEditor";
 import { useHydrated } from "@/lib/useHydrated";
 import ListItemRow from "@/components/ListItemRow";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
@@ -42,6 +44,7 @@ export default function ListDetailPage({
   const [sharedInfoOpen, setSharedInfoOpen] = useState(false);
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [addFormClosing, setAddFormClosing] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
   const fabRef = useRef<HTMLButtonElement>(null);
 
   const listId = list?.id;
@@ -157,6 +160,14 @@ export default function ListDetailPage({
           </Link>
           <div>
             <div className="flex items-center gap-1.5">
+              {list.emoji && (
+                <span
+                  aria-hidden
+                  className={`shrink-0 rounded-md px-1.5 py-1 text-xl leading-none ${colorChipClass(effectiveColor(list))}`}
+                >
+                  {list.emoji}
+                </span>
+              )}
               <h1 className="text-2xl font-bold text-primary">{list.name}</h1>
               {isOwner && list.sharedMembers && list.sharedMembers.length > 0 && (
                 <button
@@ -173,9 +184,24 @@ export default function ListDetailPage({
                 </button>
               )}
             </div>
+            <div
+              aria-hidden
+              className={`mt-2 h-1 w-10 rounded-full ${colorSwatchClass(effectiveColor(list))}`}
+            />
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setIdentityOpen(true)}
+              aria-label="Personalizar lista"
+              title="Personalizar lista"
+              className="rounded-lg p-2 text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-zinc-100 hover:text-primary dark:hover:bg-zinc-800"
+            >
+              <Palette className="h-5 w-5" aria-hidden />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setFocusMode(!focusMode)}
@@ -308,6 +334,14 @@ export default function ListDetailPage({
         onConfirm={() => setSharedInfoOpen(false)}
         onCancel={() => setSharedInfoOpen(false)}
       />
+
+      {isOwner && identityOpen && (
+        <ListIdentityEditor
+          list={list}
+          open={identityOpen}
+          onClose={() => setIdentityOpen(false)}
+        />
+      )}
     </div>
 
     {isSignedIn && (

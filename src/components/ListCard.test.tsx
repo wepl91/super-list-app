@@ -4,12 +4,13 @@ import userEvent from "@testing-library/user-event";
 import ListCard from "@/components/ListCard";
 import type { List } from "@/lib/types";
 
-const { cloneList, deleteList, renameList, setListSharedMembers, getSharedMemberEmails } =
+const { cloneList, deleteList, renameList, setListSharedMembers, setListIdentity, getSharedMemberEmails } =
   vi.hoisted(() => ({
     cloneList: vi.fn(),
     deleteList: vi.fn(),
     renameList: vi.fn(),
     setListSharedMembers: vi.fn(),
+    setListIdentity: vi.fn(),
     getSharedMemberEmails: vi.fn(),
   }));
 
@@ -38,6 +39,7 @@ const storeState = vi.hoisted(() => ({
   deleteList,
   renameList,
   setListSharedMembers,
+  setListIdentity,
 }));
 
 vi.mock("@/lib/supabase/auth", () => ({
@@ -133,5 +135,54 @@ describe("ListCard", () => {
         { userId: "u2", email: "a@b.com" },
       ])
     );
+  });
+
+  it("muestra el emoji decorativo y el acento de color elegidos", () => {
+    const { container } = render(
+      <ListCard list={{ ...mockUser, color: "teal", emoji: "🛒" }} />
+    );
+    const emoji = screen.getByText("🛒");
+    expect(emoji).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector("li")?.className).toContain("border-teal-500");
+  });
+
+  it("muestra la identidad también en listas compartidas conmigo (isOwner false)", () => {
+    const { container } = render(
+      <ListCard
+        list={{ ...mockUser, color: "rose", emoji: "🧾" }}
+        isOwner={false}
+      />
+    );
+    expect(screen.getByText("🧾")).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector("li")?.className).toContain("border-rose-500");
+  });
+
+  it("sin identidad aplica un acento determinístico por id (no rompe)", () => {
+    const { container } = render(<ListCard list={mockUser} />);
+    expect(container.querySelector("li")?.className).toMatch(/border-(emerald|sky|amber|rose|violet|teal)-500/);
+  });
+
+  it("el menú 'Personalizar' (owner) abre el editor y Guardar persiste la identidad", async () => {
+    const user = userEvent.setup();
+    render(<ListCard list={{ ...mockUser, color: "teal" }} />);
+    await user.click(screen.getByRole("button", { name: /Opciones de/ }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Personalizar" }));
+
+    expect(
+      screen.getByRole("dialog", { name: "Personalizar lista" })
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(setListIdentity).toHaveBeenCalledWith("l1", {
+      color: "teal",
+      emoji: undefined,
+    });
+  });
+
+  it("sin isOwner no hay menú para personalizar", () => {
+    render(<ListCard list={{ ...mockUser, color: "amber" }} isOwner={false} isReadOnly />);
+    expect(
+      screen.queryByRole("button", { name: /Opciones de/ })
+    ).not.toBeInTheDocument();
   });
 });
