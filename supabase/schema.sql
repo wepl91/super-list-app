@@ -29,6 +29,8 @@ create table if not exists public.lists (
   owner_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
   position int not null default 0,
+  color text,
+  emoji text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

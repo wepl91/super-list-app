@@ -2,8 +2,9 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { List, ListItem } from "../types";
+import type { List, ListItem, ListColor } from "../types";
 import { getSupabase } from "../supabase/client";
+import { defaultColorFor, normalizeEmoji } from "../listIdentity";
 import {
   applyItemsMutation,
   deleteListRemote,
@@ -61,6 +62,10 @@ interface ListState {
   applyRemoteRemoveItem: (listId: string, itemId: string) => void;
   createList: (name: string) => string;
   renameList: (id: string, name: string) => void;
+  setListIdentity: (
+    id: string,
+    identity: { color: ListColor; emoji?: string }
+  ) => void;
   deleteList: (id: string) => void;
   cloneList: (id: string) => string | undefined;
   reorderLists: (activeId: string, overId: string) => void;
@@ -299,8 +304,9 @@ export const useListStore = create<ListState>()(
 
       createList: (name) => {
         const userId = get().serverUserId;
+        const id = newId();
         const list: List = {
-          id: newId(),
+          id,
           name: name.trim(),
           items: [],
           position: get().lists.length,
@@ -308,6 +314,7 @@ export const useListStore = create<ListState>()(
           updatedAt: Date.now(),
           ownerId: userId ?? newId(),
           role: "owner",
+          color: defaultColorFor(id),
           syncStatus: userId ? "dirty" : "local",
         };
         set((state) => ({ lists: [...state.lists, list] }));
@@ -331,6 +338,27 @@ export const useListStore = create<ListState>()(
         const userId = get().serverUserId;
         if (renamed && userId) {
           pushListToRemote(renamed, userId);
+        }
+      },
+
+      setListIdentity: (id, identity) => {
+        reportListChange(id);
+        const emoji = normalizeEmoji(identity.emoji);
+        let updatedList: List | null = null;
+        set((state) => ({
+          lists: mapList(state.lists, id, (list) => {
+            updatedList = {
+              ...list,
+              color: identity.color,
+              emoji,
+              syncStatus: "dirty",
+            };
+            return updatedList;
+          }),
+        }));
+        const userId = get().serverUserId;
+        if (updatedList && userId) {
+          pushListToRemote(updatedList, userId);
         }
       },
 
