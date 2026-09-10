@@ -14,6 +14,20 @@ export interface ListItem {
 
 export type ListMembershipRole = "owner" | "editor";
 
+/**
+ * Producto del catálogo personal "Mi despensa" (100% local del dispositivo;
+ * no se sincroniza ni se comparte). Se deduplica por nombre normalizado.
+ */
+export interface PantryItem {
+  id: string;
+  name: string;
+  emoji?: string;
+  aisle?: string;
+  brand?: string;
+  count: number;
+  lastUsedAt: number;
+}
+
 /** Paleta del sistema para la identidad visual de las listas. */
 export type ListColor =
   | "emerald"

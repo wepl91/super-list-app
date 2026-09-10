@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { GripVertical, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
 import type { DraggableAttributes } from "@dnd-kit/core";
 import { useListStore } from "@/lib/stores/listStore";
+import { usePantry } from "@/lib/stores/pantryStore";
 import { useItemSwipe } from "@/hooks/useItemSwipe";
 import { haptic } from "@/lib/haptics";
+import { normalizeProductName } from "@/lib/productNames";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import type { ListItem } from "@/lib/types";
 
@@ -60,6 +62,12 @@ export default function ListItemRow({
   const toggleItem = useListStore((s) => s.toggleItem);
   const togglePin = useListStore((s) => s.togglePin);
   const deleteItem = useListStore((s) => s.deleteItem);
+
+  const products = usePantry((s) => s.products);
+  const product = useMemo(
+    () => products.find((p) => p.name === normalizeProductName(item.name)) ?? null,
+    [products, item.name]
+  );
 
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
@@ -236,6 +244,11 @@ export default function ListItemRow({
               item.completed ? "text-text-secondary line-through" : ""
             } ${focusMode ? "text-lg font-medium" : "text-sm"}`}
           >
+            {product?.emoji && (
+              <span aria-hidden="true" className="mr-1">
+                {product.emoji}
+              </span>
+            )}
             {item.name} <span className="font-medium text-text-secondary">({quantityLabel(item)})</span>
           </span>
           {item.description && (

@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ListItemRow from "@/components/ListItemRow";
 import { useListStore } from "@/lib/stores/listStore";
+import { usePantry } from "@/lib/stores/pantryStore";
 import type { ListItem } from "@/lib/types";
 
 vi.mock("@/components/ConfirmDialog", () => ({
@@ -50,6 +51,7 @@ describe("ListItemRow layout", () => {
       togglePin: vi.fn(),
       deleteItem: vi.fn(),
     } as never);
+    usePantry.setState({ products: [] });
   });
 
   it("RF-1: muestra la cantidad entre paréntesis junto al nombre", () => {
@@ -89,6 +91,26 @@ describe("ListItemRow layout", () => {
     expect(screen.queryByRole("button", { name: "Editar Leche" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Eliminar Leche" })).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Completar Leche" })).toBeDisabled();
+  });
+
+  it("muestra el emoji del producto de la despensa cuando el nombre coincide", () => {
+    usePantry.setState({
+      products: [
+        { id: "p1", name: "leche", emoji: "🥛", count: 1, lastUsedAt: 1 },
+      ],
+    });
+    renderRow();
+    expect(screen.getByText("🥛")).toBeInTheDocument();
+  });
+
+  it("no muestra emoji cuando no hay producto coincidente en la despensa", () => {
+    usePantry.setState({
+      products: [
+        { id: "p1", name: "harina", emoji: "🌾", count: 1, lastUsedAt: 1 },
+      ],
+    });
+    const { container } = renderRow();
+    expect(container.textContent).not.toContain("🌾");
   });
 });
 
