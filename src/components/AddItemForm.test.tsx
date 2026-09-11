@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AddItemForm from "@/components/AddItemForm";
+import { usePantry } from "@/lib/stores/pantryStore";
 
 const { addItem } = vi.hoisted(() => ({
   addItem: vi.fn(),
@@ -200,5 +201,28 @@ describe("AddItemForm", () => {
       quantity: 1,
       unit: "",
     });
+  });
+
+  it("registra el producto en la despensa al añadir", async () => {
+    localStorage.clear();
+    usePantry.setState({ products: [] });
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.type(screen.getByLabelText("Nombre del elemento"), "Leche");
+    await user.click(screen.getByRole("button", { name: "Añadir" }));
+    expect(usePantry.getState().products).toEqual([
+      expect.objectContaining({ name: "Leche", count: 1 }),
+    ]);
+  });
+
+  it("muestra chips de la despensa como sugerencias y usa el nombre al tocarlas", async () => {
+    localStorage.clear();
+    usePantry.setState({ products: [] });
+    usePantry.getState().upsertProduct({ name: "Leche", emoji: "🥛" });
+    usePantry.getState().recordItem("Leche");
+    const user = userEvent.setup();
+    render(<AddItemForm listId="l1" focusMode={false} closing={false} onClose={onClose} onExited={onExited} />);
+    await user.click(screen.getByRole("button", { name: "Usar Leche" }));
+    expect(screen.getByLabelText("Nombre del elemento")).toHaveValue("Leche");
   });
 });

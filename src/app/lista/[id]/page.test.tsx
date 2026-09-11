@@ -13,6 +13,8 @@ const listState = vi.hoisted(() => ({
       items: [] as never[],
       position: 0,
       sharedMembers: [],
+      emoji: "🍎",
+      color: "emerald",
     },
   ],
   ready: true,
@@ -52,7 +54,17 @@ vi.mock("@/app/supabase-actions", () => ({
   getSharedMemberEmails: vi.fn(() => Promise.resolve([])),
 }));
 
-vi.mock("@/components/ListOptionsMenu", () => ({ default: () => null }));
+vi.mock("@/components/ListOptionsMenu", () => ({
+  default: ({
+    canCustomize,
+    canShare,
+  }: {
+    canCustomize?: boolean;
+    canShare?: boolean;
+  }) => (
+    <div data-testid="list-options" data-customize={String(!!canCustomize)} data-share={String(!!canShare)} />
+  ),
+}));
 vi.mock("@/components/AuthGateCta", () => ({
   default: () => <div>AuthGateCta</div>,
 }));
@@ -82,6 +94,32 @@ describe("ListDetailPage (smoke)", () => {
       removeListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })) as unknown as typeof window.matchMedia;
+    authState.user = { id: "u1" };
+    authState.status = "signedIn";
+  });
+
+  it("muestra el emoji decorativo de la lista en el header", async () => {
+    await renderPage();
+    const emoji = screen.getByText("🍎");
+    expect(emoji).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("el menú de opciones habilita Personalizar solo para el owner", async () => {
+    authState.user = { id: "u1" };
+    await renderPage();
+    expect(screen.getByTestId("list-options")).toHaveAttribute(
+      "data-customize",
+      "true"
+    );
+  });
+
+  it("el menú de opciones no permite Personalizar para un editor/guest", async () => {
+    authState.user = { id: "u2" };
+    await renderPage();
+    expect(screen.getByTestId("list-options")).toHaveAttribute(
+      "data-customize",
+      "false"
+    );
   });
 
   it("muestra el FAB cerrado y sin form al navegar con sesión", async () => {
@@ -158,5 +196,40 @@ describe("ListDetailPage (smoke)", () => {
       screen.queryByRole("button", { name: "Añadir elemento" })
     ).not.toBeInTheDocument();
     expect(screen.getByText("AuthGateCta")).toBeInTheDocument();
+  });
+
+  it("los chips filtran la lista renderizada", async () => {
+    const user = userEvent.setup();
+    listState.lists[0].items = [
+      { id: "i1", name: "Leche", completed: false, position: 0, quantity: 1, createdAt: 0, updatedAt: 0 },
+      { id: "i2", name: "Harina", completed: true, position: 1, quantity: 1, createdAt: 0, updatedAt: 0 },
+    ] as never;
+    await renderPage();
+
+    expect(screen.getByText("Leche")).toBeInTheDocument();
+    expect(screen.getByText("Harina")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Pendientes" }));
+    expect(screen.getByText("Leche")).toBeInTheDocument();
+    expect(screen.queryByText("Harina")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tachados" }));
+    expect(screen.queryByText("Leche")).not.toBeInTheDocument();
+    expect(screen.getByText("Harina")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Todo" }));
+    expect(screen.getByText("Leche")).toBeInTheDocument();
+    expect(screen.getByText("Harina")).toBeInTheDocument();
+  });
+
+  it("filtro sin resultados muestra el empty state correspondiente", async () => {
+    const user = userEvent.setup();
+    listState.lists[0].items = [
+      { id: "i1", name: "Leche", completed: false, position: 0, quantity: 1, createdAt: 0, updatedAt: 0 },
+    ] as never;
+    await renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Tachados" }));
+    expect(screen.getByText("No hay elementos tachados")).toBeInTheDocument();
   });
 });

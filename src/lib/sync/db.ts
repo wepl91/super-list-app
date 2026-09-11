@@ -5,12 +5,15 @@ import type {
   ListItem,
   ListMembershipRole,
 } from "../types";
+import { normalizeEmoji, parseColor } from "../listIdentity";
 
 export interface ListRow {
   id: string;
   owner_id: string;
   name: string;
   position: number;
+  color: string | null;
+  emoji: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +81,10 @@ export function toList(
     updatedAt: new Date(listRow.updated_at).getTime(),
     ownerId: listRow.owner_id,
     role,
+    // Validación suave: un valor inválido proveniente del server cae a
+    // undefined (el render usa el default determinístico por id).
+    color: parseColor(listRow.color),
+    emoji: normalizeEmoji(listRow.emoji ?? undefined),
     sharedMembers,
   };
 }

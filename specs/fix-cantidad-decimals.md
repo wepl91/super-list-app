@@ -1,6 +1,6 @@
 # Fix: Input de cantidades decimales
 
-**Estado**: `approved`
+**Estado**: `implemented`
 **Versión**: v1
 **Fecha**: 2026-09-01
 

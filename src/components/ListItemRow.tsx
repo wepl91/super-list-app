@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useListStore } from "@/lib/stores/listStore";
+import { usePantry } from "@/lib/stores/pantryStore";
+import { useItemSwipe } from "@/hooks/useItemSwipe";
 import { haptic } from "@/lib/haptics";
+import { normalizeProductName } from "@/lib/productNames";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import type { ListItem } from "@/lib/types";
 
@@ -43,6 +46,15 @@ export default function ListItemRow({
   const toggleItem = useListStore((s) => s.toggleItem);
   const deleteItem = useListStore((s) => s.deleteItem);
 
+  const products = usePantry((s) => s.products);
+  const product = useMemo(
+    () =>
+      products.find(
+        (p) => normalizeProductName(p.name) === normalizeProductName(item.name)
+      ) ?? null,
+    [products, item.name]
+  );
+
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
   const [quantity, setQuantity] = useState(item.quantity);
@@ -56,11 +68,34 @@ export default function ListItemRow({
     onSave({ name, description, quantity, unit });
   }
 
-  function handleToggle() {
+  function activateToggle() {
     if (isReadOnly) return;
     if (focusMode) haptic("toggle");
     toggleItem(listId, item.id);
   }
+
+  // Swipe: derecha completa un pendiente; izquierda desmarca un completado.
+  // El gesto se ignora si arranca en un control (checkbox, botones).
+  const swipe = useItemSwipe({
+    disabled: isReadOnly,
+    ignore: (target) => Boolean(target.closest("button, input")),
+    onSwipeRight: () => {
+      if (!item.completed) activateToggle();
+    },
+    onSwipeLeft: () => {
+      if (item.completed) activateToggle();
+    },
+  });
+
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  const transform = reduceMotion
+    ? undefined
+    : swipe.swiping
+      ? `translate3d(${swipe.offsetX}px, 0, 0)`
+      : undefined;
 
   if (editing) {
     return (
@@ -133,12 +168,16 @@ export default function ListItemRow({
   }
 
   return (
-      <li
+    <li
+      onPointerDown={swipe.onPointerDown}
+      style={{
+        touchAction: "pan-y",
+        transform,
+        transition: swipe.swiping ? "none" : "transform 0.2s ease-out",
+      }}
       className={`flex items-center gap-3 rounded-xl border border-zinc-200 bg-surface dark:border-zinc-700 ${
         deleting ? "pointer-events-none opacity-0 transition-opacity duration-150" : ""
-      } ${
-        item.completed ? "animate-row-pop" : ""
-      } ${
+      } ${item.completed ? "animate-row-pop" : ""} ${
         focusMode ? "p-4 focus-within:ring-2 focus-within:ring-primary" : "p-3"
       }`}
     >
@@ -150,7 +189,7 @@ export default function ListItemRow({
         <input
           type="checkbox"
           checked={item.completed}
-          onChange={handleToggle}
+          onChange={activateToggle}
           disabled={isReadOnly}
           aria-label={`Completar ${item.name}`}
           className={`shrink-0 accent-primary disabled:opacity-50 ${
@@ -163,6 +202,11 @@ export default function ListItemRow({
               item.completed ? "text-text-secondary line-through" : ""
             } ${focusMode ? "text-lg font-medium" : "text-sm"}`}
           >
+            {product?.emoji && (
+              <span aria-hidden="true" className="mr-1">
+                {product.emoji}
+              </span>
+            )}
             {item.name} <span className="font-medium text-text-secondary">({quantityLabel(item)})</span>
           </span>
           {item.description && (

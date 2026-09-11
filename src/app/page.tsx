@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Plus, ShoppingBasket } from "lucide-react";
+import Link from "next/link";
+import { Package, Plus, ShoppingBasket } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -75,6 +76,14 @@ export default function Home() {
           </p>
         </div>
         <div className="relative flex items-center gap-1">
+          <Link
+            href="/despensa"
+            aria-label="Mi despensa"
+            title="Mi despensa"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-text-secondary hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            <Package className="h-5 w-5" aria-hidden />
+          </Link>
           <UserMenu />
           <ThemeToggle />
         </div>

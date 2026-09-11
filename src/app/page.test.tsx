@@ -39,6 +39,10 @@ describe("Home (smoke)", () => {
     expect(screen.getByRole("button", { name: "Crear lista" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByText("AuthGateCta")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Mi despensa" })).toHaveAttribute(
+      "href",
+      "/despensa"
+    );
   });
 
   it("abre el diálogo al tocar el FAB", async () => {

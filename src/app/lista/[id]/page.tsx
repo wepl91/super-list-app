@@ -5,8 +5,11 @@ import Link from "next/link";
 import { ArrowLeft, Hand, Plus, ShoppingBasket, Users, X } from "lucide-react";
 import { useListStore } from "@/lib/stores/listStore";
 import { usePreferences } from "@/lib/stores/preferencesStore";
-import { useHydrated } from "@/lib/useHydrated";
+import { colorSwatchClass, effectiveColor } from "@/lib/listIdentity";
+import ListIdentityEditor from "@/components/ListIdentityEditor";
 import ListItemRow from "@/components/ListItemRow";
+import ListFilterChips, { type ListFilter } from "@/components/ListFilterChips";
+import { useHydrated } from "@/lib/useHydrated";
 import ListOptionsMenu from "@/components/ListOptionsMenu";
 import LoadingState from "@/components/LoadingState";
 import PageTransition from "@/components/PageTransition";
@@ -42,6 +45,8 @@ export default function ListDetailPage({
   const [sharedInfoOpen, setSharedInfoOpen] = useState(false);
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [addFormClosing, setAddFormClosing] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
+  const [filter, setFilter] = useState<ListFilter>("all");
   const fabRef = useRef<HTMLButtonElement>(null);
 
   const listId = list?.id;
@@ -137,11 +142,14 @@ export default function ListDetailPage({
   }
 
   const completed = list.items.filter((i) => i.completed).length;
-  const visibleItems = hideCompleted
-    ? list.items.filter((i) => !i.completed)
-    : list.items;
+
   const pendingItems = list.items.filter((i) => !i.completed);
   const doneItems = list.items.filter((i) => i.completed);
+
+  const showPending = filter === "all" || filter === "pending";
+  const showDone = filter === "done" || (filter === "all" && !hideCompleted);
+  const hasVisibleItems = (showPending && pendingItems.length > 0) || (showDone && doneItems.length > 0);
+  const isEmptyView = !hasVisibleItems;
 
   return (
     <PageTransition>
@@ -157,6 +165,14 @@ export default function ListDetailPage({
           </Link>
           <div>
             <div className="flex items-center gap-1.5">
+              {list.emoji && (
+                <span
+                  aria-hidden
+                  className="shrink-0 rounded-md px-1.5 py-1 text-xl leading-none"
+                >
+                  {list.emoji}
+                </span>
+              )}
               <h1 className="text-2xl font-bold text-primary">{list.name}</h1>
               {isOwner && list.sharedMembers && list.sharedMembers.length > 0 && (
                 <button
@@ -173,6 +189,10 @@ export default function ListDetailPage({
                 </button>
               )}
             </div>
+            <div
+              aria-hidden
+              className={`mt-2 h-1 w-10 rounded-full ${colorSwatchClass(effectiveColor(list))}`}
+            />
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -193,6 +213,8 @@ export default function ListDetailPage({
               onDeleteCompleted={() =>
                 useListStore.getState().deleteCompletedItems(list.id)
               }
+              onCustomize={isOwner ? () => setIdentityOpen(true) : undefined}
+              canCustomize={isOwner}
               hasCompleted={hasCompleted}
               hideCompleted={hideCompleted}
               onToggleHideCompleted={() => setHideCompleted(!hideCompleted)}
@@ -229,7 +251,13 @@ export default function ListDetailPage({
         <ProgressSummary total={list.items.length} completed={completed} />
       )}
 
-      {visibleItems.length === 0 ? (
+      {list.items.length > 0 && (
+        <div className="mb-4 mt-3">
+          <ListFilterChips filter={filter} onChange={setFilter} focusMode={focusMode} />
+        </div>
+      )}
+
+      {isEmptyView ? (
         list.items.length === 0 ? (
           <EmptyState
             icon={
@@ -243,14 +271,25 @@ export default function ListDetailPage({
             icon={
               <ShoppingBasket className="h-6 w-6" aria-hidden />
             }
-            title="No hay elementos pendientes"
-            description={`${list.items.length} element${list.items.length === 1 ? "" : "s"} completado${completed === 1 ? "" : "s"}.`}
+            title={
+              filter === "done"
+                ? "No hay elementos tachados"
+                : "No hay elementos pendientes"
+            }
+            description={
+              filter === "done"
+                ? "El filtro Tachados no muestra nada por ahora."
+                : `${list.items.length} element${list.items.length === 1 ? "" : "s"} completado${completed === 1 ? "" : "s"}.`
+            }
           />
         )
       ) : (
         <div className="flex flex-col gap-4">
-          {pendingItems.length > 0 && (
+          {showPending && pendingItems.length > 0 && (
             <section aria-label="Pendientes">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                Pendientes ({pendingItems.length})
+              </h3>
               <ul className="flex flex-col gap-2">
                 {pendingItems.map((item) => (
                   <ListItemRow
@@ -268,7 +307,7 @@ export default function ListDetailPage({
               </ul>
             </section>
           )}
-          {!hideCompleted && doneItems.length > 0 && (
+          {showDone && doneItems.length > 0 && (
             <section aria-label="Completados">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
                 Completados ({doneItems.length})
@@ -308,6 +347,14 @@ export default function ListDetailPage({
         onConfirm={() => setSharedInfoOpen(false)}
         onCancel={() => setSharedInfoOpen(false)}
       />
+
+      {isOwner && identityOpen && (
+        <ListIdentityEditor
+          list={list}
+          open={identityOpen}
+          onClose={() => setIdentityOpen(false)}
+        />
+      )}
     </div>
 
     {isSignedIn && (
