@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import ListItemRow from "@/components/ListItemRow";
 import { useListStore } from "@/lib/stores/listStore";
+import { usePantry } from "@/lib/stores/pantryStore";
 import type { ListItem } from "@/lib/types";
 
 vi.mock("@/components/ConfirmDialog", () => ({
@@ -48,6 +49,7 @@ describe("ListItemRow layout", () => {
       toggleItem: vi.fn(),
       deleteItem: vi.fn(),
     } as never);
+    usePantry.setState({ products: [] });
   });
 
   it("RF-1: muestra la cantidad entre paréntesis junto al nombre", () => {
@@ -87,5 +89,103 @@ describe("ListItemRow layout", () => {
     expect(screen.queryByRole("button", { name: "Editar Leche" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Eliminar Leche" })).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Completar Leche" })).toBeDisabled();
+  });
+
+  it("muestra el emoji del producto de la despensa cuando el nombre coincide", () => {
+    usePantry.setState({
+      products: [
+        { id: "p1", name: "leche", emoji: "🥛", count: 1, lastUsedAt: 1 },
+      ],
+    });
+    renderRow();
+    expect(screen.getByText("🥛")).toBeInTheDocument();
+  });
+
+  it("no muestra emoji cuando no hay producto coincidente en la despensa", () => {
+    usePantry.setState({
+      products: [
+        { id: "p1", name: "harina", emoji: "🌾", count: 1, lastUsedAt: 1 },
+      ],
+    });
+    const { container } = renderRow();
+    expect(container.textContent).not.toContain("🌾");
+  });
+});
+
+describe("ListItemRow swipe", () => {
+  const toggleItem = () => useListStore.getState().toggleItem as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    useListStore.setState({
+      items: {},
+      toggleItem: vi.fn(),
+      deleteItem: vi.fn(),
+    } as never);
+  });
+
+  function swipe(toX: number, opts: { fromX?: number; fromY?: number; toY?: number } = {}) {
+    const li = screen.getByRole("listitem");
+    fireEvent.pointerDown(li, {
+      pointerId: 11,
+      clientX: opts.fromX ?? 0,
+      clientY: opts.fromY ?? 10,
+    });
+    fireEvent.pointerMove(window, { pointerId: 11, clientX: toX, clientY: opts.toY ?? 10 });
+    fireEvent.pointerUp(window, { pointerId: 11, clientX: toX, clientY: opts.toY ?? 10 });
+  }
+
+  it("swipe a la derecha completa un item pendiente", () => {
+    renderRow();
+    act(() => swipe(90));
+    expect(toggleItem()).toHaveBeenCalledWith("list-1", "item-1");
+  });
+
+  it("swipe a la izquierda desmarca un item completado", () => {
+    renderRow({ completed: true });
+    act(() => swipe(10, { fromX: 120 }));
+    expect(toggleItem()).toHaveBeenCalledWith("list-1", "item-1");
+  });
+
+  it("swipe a la izquierda no toca un item pendiente", () => {
+    renderRow();
+    act(() => swipe(10, { fromX: 120 }));
+    expect(toggleItem()).not.toHaveBeenCalled();
+  });
+
+  it("swipe corto (bajo umbral) no completa", () => {
+    renderRow();
+    act(() => swipe(30));
+    expect(toggleItem()).not.toHaveBeenCalled();
+  });
+
+  it("en read-only el swipe no muta nada", () => {
+    renderRow({}, { isReadOnly: true });
+    act(() => swipe(90));
+    expect(toggleItem()).not.toHaveBeenCalled();
+  });
+
+  it("un swipe que empieza en un botón (editar) no dispara toggle", () => {
+    renderRow();
+    const edit = screen.getByRole("button", { name: "Editar Leche" }) as HTMLElement;
+    act(() => {
+      fireEvent.pointerDown(edit, { pointerId: 12, clientX: 0, clientY: 10 });
+      fireEvent.pointerMove(window, { pointerId: 12, clientX: 90, clientY: 10 });
+      fireEvent.pointerUp(window, { pointerId: 12, clientX: 90, clientY: 10 });
+    });
+    expect(toggleItem()).not.toHaveBeenCalled();
+  });
+
+  it("muestra el feedback en vivo del desplazamiento horizontal", () => {
+    const { container } = renderRow();
+    const li = container.querySelector("li") as HTMLElement;
+    act(() => {
+      fireEvent.pointerDown(li, { pointerId: 13, clientX: 0, clientY: 10 });
+      fireEvent.pointerMove(window, { pointerId: 13, clientX: 70, clientY: 12 });
+    });
+    expect(li.style.transform).toBe("translate3d(70px, 0, 0)");
+    act(() => {
+      fireEvent.pointerUp(window, { pointerId: 13, clientX: 70, clientY: 12 });
+    });
+    expect(li.style.transform).toBe("");
   });
 });

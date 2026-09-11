@@ -10,6 +10,7 @@ import {
   EllipsisVertical,
   GripVertical,
   HardDrive,
+  Palette,
   Pencil,
   RefreshCw,
   Share,
@@ -19,11 +20,13 @@ import {
 } from "lucide-react";
 import type { List } from "@/lib/types";
 import { useListStore } from "@/lib/stores/listStore";
+import { colorHex, effectiveColor } from "@/lib/listIdentity";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getSharedMemberEmails } from "@/app/supabase-actions";
 import AddMemberForm from "@/components/AddMemberForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import ListIdentityEditor from "@/components/ListIdentityEditor";
 
 interface ListCardProps {
   list: List;
@@ -51,6 +54,7 @@ export default function ListCard({
   const [syncTipOpen, setSyncTipOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
   const [flashSelf, setFlashSelf] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -91,12 +95,18 @@ export default function ListCard({
     };
   }, [menuOpen]);
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: list.id, disabled: !isOwner || isReadOnly });
+
+  // Borde izquierdo con el color de identidad vía inline style: border-color de
+  // los utilities Tailwind compite (border-zinc-200 vs border-<color>-500) y el
+  // orden en el CSS compilado no es controlable; inline gana siempre.
+  const accentStyle = { borderLeftWidth: 3, borderLeftColor: colorHex(effectiveColor(list)) };
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    ...accentStyle,
   };
 
   const completed = list.items.filter((i) => i.completed).length;
@@ -219,6 +229,14 @@ export default function ListCard({
         ) : (
           <Link href={`/lista/${list.id}`} className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
+              {list.emoji && (
+                <span
+                  aria-hidden
+                  className="shrink-0 rounded-md px-1.5 py-0.5 text-sm leading-none"
+                >
+                  {list.emoji}
+                </span>
+              )}
               <p className="truncate text-sm font-medium">{list.name}</p>
               {isShared && (
                 <button
@@ -229,9 +247,10 @@ export default function ListCard({
                     setMembersOpen(true);
                   }}
                   aria-label={`Ver con quién se compartió ${list.name}`}
-                  className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  title="Compartida"
+                  className="shrink-0 rounded-md p-0.5 text-text-secondary transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
-                  Compartida
+                  <Users className="h-4 w-4" aria-hidden />
                 </button>
               )}
             </div>
@@ -287,6 +306,19 @@ export default function ListCard({
                 >
                   <Pencil className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
                   Renombrar
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setIdentityOpen(true);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:hover:bg-zinc-800"
+                >
+                  <Palette className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
+                  Personalizar
                 </button>
 
                 <button
@@ -358,6 +390,14 @@ export default function ListCard({
           list={list}
           onClose={() => setMembersOpen(false)}
           setListSharedMembers={setListSharedMembers}
+        />
+      )}
+
+      {isOwner && identityOpen && (
+        <ListIdentityEditor
+          list={list}
+          open={identityOpen}
+          onClose={() => setIdentityOpen(false)}
         />
       )}
     </li>

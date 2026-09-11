@@ -1,6 +1,6 @@
 # UI del elemento de lista — Layout de nombre, cantidad y descripción
 
-**Estado**: `draft`
+**Estado**: `implemented`
 **Versión**: v1
 **Fecha**: 2026-09-03
 

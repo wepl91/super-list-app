@@ -1,6 +1,6 @@
 # FAB de "crear lista" + modal de creación (home)
 
-**Estado**: `approved`
+**Estado**: `implemented`
 **Versión**: v1
 **Fecha**: 2026-09-09
 

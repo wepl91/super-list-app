@@ -33,7 +33,7 @@ export async function pullAll(
   }
 
   const { data: listRows, error: listError } = await supabase.from("lists")
-    .select("id, owner_id, name, position, created_at, updated_at")
+    .select("id, owner_id, name, position, color, emoji, created_at, updated_at")
     .in("id", allListIds)
     .order("position", { ascending: true });
 
@@ -103,6 +103,8 @@ export async function upsertList(
     owner_id: list.ownerId,
     name: list.name,
     position: list.position,
+    color: list.color ?? null,
+    emoji: list.emoji ?? null,
     updated_at: isNaN(updated.getTime()) ? new Date().toISOString() : updated.toISOString(),
   };
   const { error } = await supabase.from("lists").upsert(listRow, {

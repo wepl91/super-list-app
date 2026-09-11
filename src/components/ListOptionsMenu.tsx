@@ -6,6 +6,7 @@ import {
   EllipsisVertical,
   Eye,
   EyeOff,
+  Palette,
   Trash2,
   Users,
 } from "lucide-react";
@@ -19,6 +20,8 @@ interface ListOptionsMenuProps {
   onToggleHideCompleted: () => void;
   onShare?: () => void;
   canShare?: boolean;
+  onCustomize?: () => void;
+  canCustomize?: boolean;
 }
 
 export default function ListOptionsMenu({
@@ -29,6 +32,8 @@ export default function ListOptionsMenu({
   onToggleHideCompleted,
   onShare,
   canShare = false,
+  onCustomize,
+  canCustomize = false,
 }: ListOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -71,6 +76,21 @@ export default function ListOptionsMenu({
           aria-labelledby="list-options"
           className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-xl border border-zinc-200 bg-surface p-1 shadow-lg dark:border-zinc-700"
         >
+          {canCustomize && onCustomize && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onCustomize();
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <Palette className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden />
+              Personalizar lista
+            </button>
+          )}
+
           {canShare && onShare && (
             <button
               type="button"
